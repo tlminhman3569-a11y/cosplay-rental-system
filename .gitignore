@@ -1,0 +1,21 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Biến môi trường ( không push file .env lên mạng)
+.env
+.env.local
+.env.development
+.env.production
+
+# Thư mục build của Frontend
+dist/
+build/
+
+# Thư mục upload tạm của Backend (tránh push ảnh rác lên)
+backend/uploads/
+
+# OS metadata
+.DS_Store
+Thumbs.db
