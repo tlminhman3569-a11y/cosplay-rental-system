@@ -1,0 +1,44 @@
+// 1. Định nghĩa các biến màu của dự án
+$primary: #4A3B32;     // Nâu đậm (chữ chính, bg chính, viền)
+$secondary: #6B4E3D;   // Nâu vừa (nút Đăng ký, avatar)
+$accent: #8C6B52;      // Nâu nhạt (logo chữ C, text phụ)
+$light-bg: #F8F6F2;    // Nền xám be tổng thể Dashboard
+$menu-active: #F1E9E1; // Nền menu active
+$badge-bg: #EADBCB;    // Nền badge chủ cho thuê
+$danger: #A84934;      // Đỏ gạch (thông báo)
+// 2. Ghi đè hệ thống màu của Bootstrap
+$theme-colors: (
+        "primary": $primary,
+        "secondary": $secondary,
+        "accent": $accent,
+        "light-bg": $light-bg,
+        "menu-active": $menu-active,
+        "badge-bg": $badge-bg,
+        "danger": $danger
+);
+
+// 3. Import Bootstrap
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+:root {
+  --bs-accent: #{$accent};
+  --bs-light-bg: #{$light-bg};
+  --bs-menu-active: #{$menu-active};
+  --bs-badge-bg: #{$badge-bg};
+}
+
+/* Global Custom Styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hero-section {
+  background-color: $primary;
+  border-radius: 8px;
+}
+
+.img-placeholder {
+  background-color: #E6DED5; // Khối màu xám/be thay cho ảnh thật
+  width: 100%;
+}
