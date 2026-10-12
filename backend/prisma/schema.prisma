@@ -12,8 +12,386 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  READY
+  SHIPPING
+  RENTING
+  RETURNED
+  COMPLETED
+  CANCELLED
+}
+
+enum ShippingMethod {
+  DELIVERY
+  PICKUP
+}
+
+enum PaymentType {
+  PAY
+  REFUND
+}
+
+enum PaymentMethod {
+  MOMO
+  VNPAY
+  CARD
+  BANK
+  QR
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ShopStatus {
+  ACTIVE
+  HIDDEN
+}
+
+enum AccessoryType {
+  WIG
+  SHOES
+  PROPS
+}
+
+enum ProductType {
+  COSTUME
+  ACCESSORY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum Status {
+  ACTIVE
+  HIDDEN
+}
+
+// ==========================================
+// MODELS (COLLECTIONS)
+// ==========================================
+
+model Role {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  description String?
+  users       User[]
+
+  @@map("roles")
+}
+
+model UserToken {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String        @db.ObjectId
+  tokenHash String
+  type      UserTokenType
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_tokens")
+}
+
 model User {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  email String @unique
-  name  String
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  roleId        String      @db.ObjectId
+  email         String      @unique
+  passwordHash  String?
+  googleId      String?     @unique
+  fullName      String
+  phone         String?
+  birthDate     DateTime?
+  avatarUrl     String?
+  status        UserStatus  @default(ACTIVE)
+  emailVerified Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  role                Role                 @relation(fields: [roleId], references: [id])
+  tokens              UserToken[]
+  measurement         UserMeasurement?
+  addresses           UserAddress[]
+  shops               Shop[]
+  cart                Cart?
+  orders              Order[]              @relation("RenterOrders")
+  orderStatusHistory  OrderStatusHistory[] @relation("StatusChangedBy")
+
+  @@map("users")
+}
+
+model UserMeasurement {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String @unique @db.ObjectId
+  heightCm   Float?
+  weightKg   Float?
+  chestCm    Float?
+  waistCm    Float?
+  hipCm      Float?
+  shoeSizeEu Float?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_measurements")
+}
+
+model UserAddress {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String  @db.ObjectId
+  receiverName String
+  phone        String
+  address      String
+  city         String
+  isDefault    Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_addresses")
+}
+
+model Cart {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String     @unique @db.ObjectId
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  quantity  Int      @default(1)
+  startDate DateTime
+  endDate   DateTime
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("cart_items")
+}
+
+model Order {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  renterId        String         @db.ObjectId
+  shopId          String         @db.ObjectId
+  status          OrderStatus    @default(PENDING)
+  receiverName    String
+  receiverPhone   String
+  shippingAddress String?
+  eventDate       DateTime?
+  shippingMethod  ShippingMethod
+  shippingFee     Float          @default(0)
+  rentalTotal     Float          @default(0)
+  depositTotal    Float          @default(0)
+  platformFee     Float          @default(0)
+  totalAmount     Float          @default(0)
+  note            String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  renter        User                 @relation("RenterOrders", fields: [renterId], references: [id])
+  shop          Shop                 @relation(fields: [shopId], references: [id])
+  payments      Payment[]
+  statusHistory OrderStatusHistory[]
+  orderItems    OrderItem[]
+
+  @@map("orders")
+}
+
+model Payment {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId      String        @db.ObjectId
+  type         PaymentType
+  method       PaymentMethod
+  amount       Float
+  status       PaymentStatus @default(PENDING)
+  gatewayTxnId String?
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  orderId    String       @db.ObjectId
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  changedBy  String?      @db.ObjectId
+  changedAt  DateTime     @default(now())
+
+  order         Order @relation(fields: [orderId], references: [id])
+  changedByUser User? @relation("StatusChangedBy", fields: [changedBy], references: [id])
+
+  @@map("order_status_history")
+}
+
+model OrderItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String   @db.ObjectId
+  productId   String   @db.ObjectId
+  productName String
+  unitPrice   Float
+  deposit     Float
+  quantity    Int      @default(1)
+  startDate   DateTime
+  endDate     DateTime
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Shop {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId     String     @db.ObjectId
+  name        String
+  logoUrl     String?
+  description String?
+  region      String?
+  status      ShopStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id])
+  orders   Order[]
+  products Product[]
+
+  @@map("shops")
+}
+
+model ProductImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId String  @db.ObjectId
+  url       String
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_images")
+}
+
+model ProductAccessory {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  productId String        @db.ObjectId
+  type      AccessoryType
+  name      String
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_accessories")
+}
+
+model ProductBlockedDate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @db.ObjectId
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_blocked_dates")
+}
+
+model Product {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  shopId        String      @db.ObjectId
+  categoryId    String      @db.ObjectId
+  brandId       String?     @db.ObjectId
+  seriesId      String?     @db.ObjectId
+  productType   ProductType @default(COSTUME)
+  name          String
+  characterName String?
+  gender        Gender      @default(UNISEX)
+  size          String?
+  difficulty    Difficulty?
+  description   String?
+  pricePerDay   Float
+  depositAmount Float
+  quantity      Int         @default(1)
+  minRentalDays Int         @default(1)
+  maxRentalDays Int         @default(30)
+  cleaningDays  Int         @default(1)
+  rentalCount   Int         @default(0)
+  viewCount     Int         @default(0)
+  status        Status      @default(ACTIVE)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  shop          Shop                 @relation(fields: [shopId], references: [id])
+  category      Category             @relation(fields: [categoryId], references: [id])
+  brand         Brand?               @relation(fields: [brandId], references: [id])
+  series        Series?              @relation(fields: [seriesId], references: [id])
+  images        ProductImage[]
+  accessories   ProductAccessory[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  blockedDates  ProductBlockedDate[]
+
+  @@map("products")
+}
+
+model Category {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  name     String    @unique
+  status   Status    @default(ACTIVE)
+  products Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String    @unique
+  description String?
+  status      Status    @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  products    Product[]
+
+  @@map("brands")
+}
+
+model Series {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  name     String    @unique
+  status   Status    @default(ACTIVE)
+  products Product[]
+
+  @@map("series")
 }
