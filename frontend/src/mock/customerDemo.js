@@ -1,5 +1,6 @@
 const DEMO_CART_KEY = 'clarity-demo-cart';
 const DEMO_ORDER_KEY = 'clarity-demo-order';
+const DEMO_COMPLAINT_KEY = 'clarity-demo-complaint';
 
 export const demoProduct = {
   id: 'demo', name: 'Trang phục Nezuko Kamado', characterName: 'Nezuko Kamado', gender: 'FEMALE', size: 'M',
@@ -54,10 +55,23 @@ export function addDemoCartItem(payload) {
 }
 export function getDemoOrder() { return JSON.parse(localStorage.getItem(DEMO_ORDER_KEY) || JSON.stringify(clone(demoOrder))); }
 export function saveDemoOrder(order) { localStorage.setItem(DEMO_ORDER_KEY, JSON.stringify(order)); return order; }
+export function getDemoComplaint() {
+  const complaint = localStorage.getItem(DEMO_COMPLAINT_KEY);
+  return complaint ? JSON.parse(complaint) : null;
+}
+export function saveDemoComplaint(complaint) {
+  const saved = { ...complaint, submittedAt: new Date().toISOString() };
+  localStorage.setItem(DEMO_COMPLAINT_KEY, JSON.stringify(saved));
+  return saved;
+}
 export function updateDemoOrder(status, note) {
   const order = getDemoOrder();
   order.status = status;
   order.statusHistory.unshift({ status, note, createdAt: new Date().toISOString() });
   return saveDemoOrder(order);
 }
-export function resetCustomerDemo() { localStorage.removeItem(DEMO_CART_KEY); localStorage.removeItem(DEMO_ORDER_KEY); }
+export function resetCustomerDemo() {
+  localStorage.removeItem(DEMO_CART_KEY);
+  localStorage.removeItem(DEMO_ORDER_KEY);
+  localStorage.removeItem(DEMO_COMPLAINT_KEY);
+}

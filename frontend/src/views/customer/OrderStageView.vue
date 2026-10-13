@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { orderApi } from '../../services/customerApi';
-import { getDemoOrder, updateDemoOrder } from '../../mock/customerDemo';
+import { getDemoComplaint, getDemoOrder, saveDemoComplaint, updateDemoOrder } from '../../mock/customerDemo';
 import AccessibleSelect from '../../components/AccessibleSelect.vue';
 
 const props = defineProps({ stage: { type: String, default: 'tracking' } });
@@ -17,6 +17,7 @@ const cancelReason = ref('');
 const agreeCancel = ref(false);
 const checklist = ref({ complete: true, condition: true, size: true, clean: true });
 const evidenceFiles = ref([]);
+const complaintSubmitted = ref(false);
 const returnMethod = ref('Grab Express');
 const disputeReason = ref('Không đồng ý với mức bồi thường hư hỏng');
 const disputeResolution = ref('Hoàn cọc sau khi trừ phí trễ');
@@ -90,7 +91,21 @@ const history = computed(() => {
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 function date(value, options = { day: '2-digit', month: '2-digit', year: 'numeric' }) { return value ? new Date(value).toLocaleDateString('vi-VN', options) : '20/10/2026'; }
 async function load() {
-  if (isDemo.value) { order.value = getDemoOrder(); return; }
+  if (isDemo.value) {
+    order.value = getDemoOrder();
+    if (props.stage === 'complaint') {
+      const complaint = getDemoComplaint();
+      if (complaint) {
+        disputeReason.value = complaint.reason;
+        disputeResolution.value = complaint.resolution;
+        message.value = complaint.message;
+        evidenceFiles.value = complaint.evidenceFiles || [];
+        complaintSubmitted.value = true;
+        notice.value = 'Đã lưu lựa chọn, mô tả và tên tệp trong demo trên trình duyệt; chưa gửi lên backend.';
+      }
+    }
+    return;
+  }
   if (!route.params.id) { error.value = 'Không tìm thấy mã đơn thuê.'; return; }
   try { order.value = (await orderApi.detail(route.params.id)).data; }
   catch (requestError) { error.value = requestError.response?.data?.error?.message || 'Không thể tải đơn thuê.'; }
@@ -106,7 +121,22 @@ function runAction(action) {
   if (action === 'refund') return demoUpdate('COMPLETED', `Đã đồng ý khoản khấu trừ; dự kiến hoàn ${money(expectedRefund.value)}.`);
   if (action === 'cancel') return demoUpdate('CANCELLED', `Đã gửi yêu cầu hủy. Dự kiến hoàn ${money(refundOnCancel.value)}.`);
   if (action === 'review') { notice.value = `Đã gửi đánh giá ${Object.values(ratings.value).reduce((sum, value) => sum + value, 0)}/15. Cảm ơn bạn!`; return; }
-  if (action === 'complaint') { notice.value = `Đã gửi khiếu nại${evidenceFiles.value.length ? ` kèm ${evidenceFiles.value.length} tệp bằng chứng` : ''} cho Clarity hỗ trợ.`; return; }
+  if (action === 'complaint') {
+    if (!isDemo.value) {
+      notice.value = 'Chức năng gửi khiếu nại chưa có API; nội dung và tệp chưa được gửi lên server.';
+      return;
+    }
+    saveDemoComplaint({
+      orderId: order.value?.id,
+      reason: disputeReason.value,
+      resolution: disputeResolution.value,
+      message: message.value,
+      evidenceFiles: [...evidenceFiles.value]
+    });
+    complaintSubmitted.value = true;
+    notice.value = 'Đã lưu lựa chọn, mô tả và tên tệp trong demo trên trình duyệt; chưa gửi lên backend.';
+    return;
+  }
 }
 function onEvidenceChange(event) { evidenceFiles.value = [...event.target.files].map((file) => file.name); }
 function historyDescription(entry) {
@@ -138,7 +168,7 @@ onMounted(load);
 
     <section v-if="stage === 'review'" class="row g-4 mt-1"><div class="col-lg-7"><article class="detail-card"><h2 class="h5">Đánh giá chủ đồ {{ order?.shop?.name || 'Trần Thị Mai' }}</h2><div v-for="criterion in [{key:'communication',label:'Giao tiếp'},{key:'description',label:'Đúng mô tả'},{key:'punctuality',label:'Đúng hẹn'}]" :key="criterion.key" class="rating-row"><span>{{ criterion.label }}</span><div class="stars"><button v-for="n in 5" :key="n" class="btn p-0" :class="{ selected: n <= ratings[criterion.key] }" :aria-label="`${n} sao`" @click="ratings[criterion.key] = n"><i class="bi bi-star-fill"></i></button></div></div><label class="form-label mt-3">Nhận xét về sản phẩm {{ order?.orderItems?.[0]?.productName || 'Cosplay Raiden Shogun' }}<textarea v-model="message" class="form-control mt-1" rows="4" placeholder="Chia sẻ trải nghiệm: chất liệu, độ vừa size, phụ kiện..."></textarea></label><h3 class="h6 mt-4">Ảnh thực tế (tối đa 5)</h3><label class="upload-button"><i class="bi bi-plus-lg"></i> Thêm ảnh<input type="file" accept="image/*" multiple @change="onEvidenceChange"></label><small class="d-block text-muted mt-2">{{ evidenceFiles.length }} ảnh đã chọn · Hạn gửi trong 7 ngày kể từ khi đơn hoàn tất.</small><button class="btn btn-primary mt-4" @click="runAction('review')">Gửi đánh giá</button></article></div><aside class="col-lg-5"><article class="detail-card"><h2 class="h5">Chủ đồ sẽ đánh giá bạn</h2><p class="text-muted">Trần Thị Mai chấm các tiêu chí sau:</p><ul class="review-criteria"><li>Giữ gìn đồ</li><li>Trả đúng hẹn</li><li>Giao tiếp lịch sự</li></ul><h3 class="h6 mt-4">Quy tắc đánh giá ẩn</h3><p class="small text-muted">Đánh giá chỉ hiện công khai khi cả hai đã gửi hoặc sau 7 ngày kể từ khi đơn hoàn tất.</p><div class="two-sided"><span>Bạn <strong>Chưa gửi</strong></span><span>Chủ đồ <strong>Chưa gửi</strong></span></div></article></aside></section>
 
-    <section v-if="stage === 'complaint'" class="row g-4 mt-1"><div class="col-lg-7"><article class="detail-card"><div class="dispute-banner"><i class="bi bi-exclamation-diamond"></i><div><strong>Khiếu nại {{ order?.disputeId || 'DIS-2026-0912' }}</strong><small>Đã chuyển Admin · Mức độ trung bình</small></div></div><h2 class="h6 mt-4">Yêu cầu của chủ đồ</h2><p class="claim-text">Rách tay áo trái khoảng 5cm và ố váy; yêu cầu bồi thường {{ money(damageFee) }} cùng phí trả muộn {{ money(lateFee) }}. Chủ đồ đính kèm ảnh lúc trả.</p><h2 class="h6 mt-4">Ý kiến của bạn</h2><div class="form-label mb-1">Lý do khiếu nại</div><AccessibleSelect v-model="disputeReason" :options="disputeReasonOptions" label="Lý do khiếu nại"/><div class="form-label mt-3 mb-1">Mong muốn giải quyết</div><AccessibleSelect v-model="disputeResolution" :options="disputeResolutionOptions" label="Mong muốn giải quyết"/><label class="form-label mt-3">Mô tả chi tiết<textarea v-model="message" class="form-control mt-1" rows="4" placeholder="Mô tả sự việc và dẫn chiếu ảnh đồng kiểm..."></textarea></label><h3 class="h6 mt-3">Bằng chứng</h3><div class="evidence-grid"><div class="evidence-tile"><i class="bi bi-image"></i><span>Ảnh nhận đồ · 6 ảnh</span></div><div class="evidence-tile"><i class="bi bi-image"></i><span>Ảnh trả đồ · 3 ảnh</span></div><label class="evidence-tile add-tile"><i class="bi bi-plus-lg"></i><span>Thêm ảnh / video<input type="file" accept="image/*,video/*" multiple @change="onEvidenceChange"></span></label></div><small class="d-block text-muted mt-2">{{ evidenceFiles.length }} tệp bổ sung đã chọn</small><div class="d-flex gap-2 mt-4"><button class="btn btn-danger" @click="runAction('complaint')">Gửi bổ sung</button><button class="btn btn-outline-primary" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Quay lại đơn</button></div></article></div><aside class="col-lg-5"><article class="detail-card"><h2 class="h5">Trạng thái tranh chấp</h2><div class="dispute-timeline"><div><i>✓</i><span>23/10 · Bạn mở tranh chấp<small>Không đồng ý khoản bồi thường</small></span></div><div><i>✓</i><span>24/10 · Staff tiếp nhận<small>Hòa giải hai bên</small></span></div><div><i>3</i><span>25/10 · Chuyển Admin<small>Chờ phán quyết</small></span></div></div><h3 class="h6 mt-4">Số tiền liên quan</h3><div class="summary-row"><span>Cọc đang giữ</span><strong>{{ money(deposit) }}</strong></div><div class="summary-row"><span>Chủ đồ yêu cầu</span><strong>{{ money(damageFee) }}</strong></div><div class="summary-row"><span>Phí trễ</span><strong>{{ money(lateFee) }}</strong></div><div class="support-note mt-4"><strong>Quy trình hỗ trợ (48 giờ)</strong><p class="small mb-0 mt-2">Staff tiếp nhận, hòa giải; nếu không thống nhất sẽ chuyển Admin phán quyết. Thông tin minh họa theo wireframe.</p></div></article></aside></section>
+    <section v-if="stage === 'complaint'" class="row g-4 mt-1"><div class="col-lg-7"><article class="detail-card"><div class="dispute-banner"><i class="bi bi-exclamation-diamond"></i><div><strong>Khiếu nại {{ order?.disputeId || 'DIS-2026-0912' }}</strong><small>Đã chuyển Admin · Mức độ trung bình</small></div></div><h2 class="h6 mt-4">Yêu cầu của chủ đồ</h2><p class="claim-text">Rách tay áo trái khoảng 5cm và ố váy; yêu cầu bồi thường {{ money(damageFee) }} cùng phí trả muộn {{ money(lateFee) }}. Chủ đồ đính kèm ảnh lúc trả.</p><h2 class="h6 mt-4">Ý kiến của bạn</h2><div class="form-label mb-1">Lý do khiếu nại</div><AccessibleSelect v-model="disputeReason" :options="disputeReasonOptions" label="Lý do khiếu nại"/><div class="form-label mt-3 mb-1">Mong muốn giải quyết</div><AccessibleSelect v-model="disputeResolution" :options="disputeResolutionOptions" label="Mong muốn giải quyết"/><label class="form-label mt-3">Mô tả chi tiết<textarea v-model="message" class="form-control mt-1" rows="4" placeholder="Mô tả sự việc và dẫn chiếu ảnh đồng kiểm..."></textarea></label><h3 class="h6 mt-3">Bằng chứng</h3><div class="evidence-grid"><div class="evidence-tile"><i class="bi bi-image"></i><span>Ảnh nhận đồ · 6 ảnh</span></div><div class="evidence-tile"><i class="bi bi-image"></i><span>Ảnh trả đồ · 3 ảnh</span></div><label class="evidence-tile add-tile"><i class="bi bi-plus-lg"></i><span>Thêm ảnh / video<input type="file" accept="image/*,video/*" multiple @change="onEvidenceChange"></span></label></div><small class="d-block text-muted mt-2">{{ evidenceFiles.length }} tệp bổ sung đã chọn</small><div class="d-flex gap-2 mt-4"><button class="btn btn-danger" @click="runAction('complaint')">{{ complaintSubmitted ? 'Cập nhật bản demo' : 'Gửi bổ sung' }}</button><button class="btn btn-outline-primary" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Quay lại đơn</button></div><div v-if="notice && stage === 'complaint'" class="alert alert-info mt-3 mb-0" role="status"><i class="bi bi-info-circle me-2"></i>{{ notice }}</div></article></div><aside class="col-lg-5"><article class="detail-card"><h2 class="h5">Trạng thái tranh chấp</h2><div class="dispute-timeline"><div><i>✓</i><span>23/10 · Bạn mở tranh chấp<small>Không đồng ý khoản bồi thường</small></span></div><div><i>✓</i><span>24/10 · Staff tiếp nhận<small>Hòa giải hai bên</small></span></div><div><i>3</i><span>25/10 · Chuyển Admin<small>Chờ phán quyết</small></span></div></div><h3 class="h6 mt-4">Số tiền liên quan</h3><div class="summary-row"><span>Cọc đang giữ</span><strong>{{ money(deposit) }}</strong></div><div class="summary-row"><span>Chủ đồ yêu cầu</span><strong>{{ money(damageFee) }}</strong></div><div class="summary-row"><span>Phí trễ</span><strong>{{ money(lateFee) }}</strong></div><div class="support-note mt-4"><strong>Quy trình hỗ trợ (48 giờ)</strong><p class="small mb-0 mt-2">Staff tiếp nhận, hòa giải; nếu không thống nhất sẽ chuyển Admin phán quyết. Thông tin minh họa theo wireframe.</p></div></article></aside></section>
 
     <section v-if="stage === 'pending'" class="detail-card mt-4"><h2 class="h5">Tiền thuê đang được Clarity giữ</h2><p class="mb-0">{{ money(rental) }} tiền thuê + {{ money(deposit) }} tiền cọc. Chủ đồ cần xác nhận trước hạn; nếu từ chối hoặc quá hạn, bạn được hoàn theo chính sách.</p><div class="d-flex gap-2 mt-3"><button class="btn btn-outline-danger" @click="router.push(isDemo ? `/customer/orders/${order.id}/cancel?demo=1` : `/customer/orders/${order.id}/cancel`)">Hủy yêu cầu (miễn phí)</button><button class="btn btn-outline-primary">Chat với chủ đồ</button></div></section>
     <section v-if="stage === 'tracking'" class="row g-4 mt-1"><section class="col-lg-8"><article class="detail-card"><h2 class="h5">Lịch sử đơn hàng</h2><div class="history-list"><div v-for="entry in history" :key="`${entry.toStatus}-${entry.changedAt}`" class="history-entry"><span class="history-dot" :class="entry.toStatus === 'COMPLETED' ? 'warning' : ''">{{ entry.toStatus === 'COMPLETED' ? '!' : '✓' }}</span><div><strong>{{ date(entry.changedAt, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }} · {{ statusLabels[entry.toStatus] || entry.toStatus }}</strong><small>{{ historyDescription(entry) }}</small></div></div></div><div v-if="isDisputed" class="alert alert-warning mt-3 mb-0">Đơn đang ở bước kiểm tra sau trả; tiền cọc được giữ đến khi có phán quyết.</div></article></section><aside class="col-lg-4"><article class="detail-card"><h2 class="h5">Thông tin đơn</h2><div class="summary-row"><span>Thời gian thuê</span><strong>{{ date(order?.orderItems?.[0]?.startDate) }}–{{ date(order?.orderItems?.[0]?.endDate) }}</strong></div><div class="summary-row"><span>Nhận đồ</span><strong>{{ order?.shippingProvider || 'Grab Express' }}</strong></div><div class="summary-row"><span>Tổng tiền</span><strong>{{ money(order?.totalAmount || 1500000) }}</strong></div><button class="btn btn-outline-primary w-100 mt-3" @click="router.push(isDemo ? `/customer/orders/${order.id}/receive?demo=1` : `/customer/orders/${order.id}/receive`)">Xem thao tác nhận / trả</button></article></aside></section>

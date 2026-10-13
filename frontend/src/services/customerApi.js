@@ -4,6 +4,8 @@ export const productApi = {
   list: (params) => api.get('/api/products', { params }),
   detail: (id) => api.get(`/api/products/${id}`),
   section: (name, params) => api.get(`/api/products/sections/${name}`, { params }),
+  filters: () => api.get('/api/products/filters'),
+  listByShop: (shopId, params) => api.get(`/api/shops/${shopId}/products`, { params }),
 };
 
 export const cartApi = {
