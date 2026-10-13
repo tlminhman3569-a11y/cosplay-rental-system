@@ -15,6 +15,7 @@ Base URL: `/api`. Tất cả phản hồi thành công có dạng `{ "data": ...
 | API | Query/response chính |
 | --- | --- |
 | `GET /products` | `q`, `categoryId`, `brandId`, `seriesId`, `shopId`, `gender`, `size`, `minPrice`, `maxPrice`, `sort` (`price_asc`, `price_desc`, `rental_count`, `newest`), `page`, `limit`. Trả `{items, pagination}`. |
+| `GET /products/filters` | Trả lựa chọn chỉ từ các sản phẩm `ACTIVE`: `{categories, brands, series, genders, sizes, priceRange}`. Dùng để dựng bộ lọc động ở trang tìm kiếm của Thành viên 1. |
 | `GET /products/:id` | Trả product, `shop`, `images`, `accessories`, `blockedDates`, `similarProducts`. |
 | `GET /products/sections/bestsellers` | Trả `{items}` theo `rentalCount` giảm dần. |
 | `GET /products/sections/newest` | Trả `{items}` theo `createdAt` giảm dần. |

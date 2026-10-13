@@ -59,6 +59,39 @@ async function listProducts(query, lockedShopId) {
     return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 }
 
+function uniqueOptions(values) {
+    const options = new Map();
+    for (const value of values) {
+        if (value?.id && value?.name) options.set(value.id, { id: value.id, name: value.name });
+    }
+    return [...options.values()].sort((left, right) => left.name.localeCompare(right.name, 'vi'));
+}
+
+async function getFilterOptions() {
+    const where = { status: 'ACTIVE' };
+    const [products, price] = await Promise.all([
+        prisma.product.findMany({
+            where,
+            select: {
+                category: { select: { id: true, name: true } },
+                brand: { select: { id: true, name: true } },
+                series: { select: { id: true, name: true } },
+                gender: true,
+                size: true
+            }
+        }),
+        prisma.product.aggregate({ where, _min: { pricePerDay: true }, _max: { pricePerDay: true } })
+    ]);
+    return {
+        categories: uniqueOptions(products.map((product) => product.category)),
+        brands: uniqueOptions(products.map((product) => product.brand)),
+        series: uniqueOptions(products.map((product) => product.series)),
+        genders: [...new Set(products.map((product) => product.gender).filter(Boolean))].sort(),
+        sizes: [...new Set(products.map((product) => product.size).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'vi')),
+        priceRange: { min: price._min.pricePerDay, max: price._max.pricePerDay }
+    };
+}
+
 async function getProduct(id) {
     const product = await prisma.product.findFirst({
         where: { id, status: 'ACTIVE' },
@@ -103,4 +136,4 @@ async function listSection(section, query) {
     return { items: await prisma.product.findMany({ where: { status: 'ACTIVE' }, include: productInclude, orderBy, take: limit }) };
 }
 
-module.exports = { listProducts, getProduct, listSection, productInclude };
+module.exports = { listProducts, getFilterOptions, getProduct, listSection, productInclude };

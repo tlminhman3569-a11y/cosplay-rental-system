@@ -2,6 +2,7 @@ const { success, fail, asyncHandler } = require('../../utils/api');
 const productService = require('../../services/productService');
 
 exports.list = asyncHandler(async (req, res) => success(res, await productService.listProducts(req.query)));
+exports.filters = asyncHandler(async (req, res) => success(res, await productService.getFilterOptions()));
 exports.listByShop = asyncHandler(async (req, res) => success(res, await productService.listProducts(req.query, req.params.shopId)));
 exports.detail = asyncHandler(async (req, res) => {
     const product = await productService.getProduct(req.params.id);
