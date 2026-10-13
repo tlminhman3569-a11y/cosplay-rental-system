@@ -8,7 +8,8 @@ function rentalDays(startDate, endDate) {
     const end = new Date(endDate);
     const milliseconds = end.getTime() - start.getTime();
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || milliseconds < 0) return 0;
-    return Math.floor(milliseconds / 86400000) + 1;
+    // The rental end date is the return date, so 20–22 represents two rental days.
+    return Math.max(1, Math.floor(milliseconds / 86400000));
 }
 
 function normalizeAccessories(value) {
