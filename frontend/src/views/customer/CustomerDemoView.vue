@@ -1,4 +1,7 @@
 <script setup>
+import { useRouter } from 'vue-router';
+import { resetCustomerDemo } from '../../mock/customerDemo';
+const router = useRouter();
 const screens = [
   ['R07 · Chi tiết sản phẩm', '/products/demo?demo=1'], ['R25 · Giỏ thuê', '/customer/cart?demo=1'],
   ['R08 · Gửi yêu cầu thuê', '/customer/rental-request?demo=1'], ['R09 · Thanh toán', '/customer/checkout?demo=1'],
@@ -8,6 +11,7 @@ const screens = [
   ['R20 · Hủy đơn', '/customer/orders/demo-order/cancel?demo=1'], ['R16 · Đánh giá', '/customer/orders/demo-order/review?demo=1'],
   ['R17 · Khiếu nại', '/customer/orders/demo-order/complaint?demo=1']
 ];
+function resetDemo() { resetCustomerDemo(); router.go(); }
 </script>
-<template><div class="container py-5"><span class="badge text-bg-secondary mb-2">Chế độ demo</span><h1 class="h2">Màn hình khách thuê của Huy</h1><p class="text-muted">Các màn dưới dùng dữ liệu mẫu trên trình duyệt; không cần đăng nhập, MongoDB hoặc VNPay.</p><div class="row g-3 mt-2"><div v-for="([name, link]) in screens" :key="link" class="col-md-6 col-lg-4"><router-link :to="link" class="card h-100 text-decoration-none text-dark demo-card"><div class="card-body"><i class="bi bi-window-sidebar fs-4 text-primary"></i><div class="fw-semibold mt-2">{{ name }}</div><small class="text-muted">Mở màn hình demo</small></div></router-link></div></div></div></template>
-<style scoped>.demo-card:hover{border-color:var(--bs-primary);box-shadow:0 .25rem .75rem rgb(0 0 0 / .1)}</style>
+<template><div class="demo-page py-5"><div class="container"><div class="demo-hero"><div><span class="badge text-bg-secondary mb-2">CHẾ ĐỘ DEMO</span><h1 class="display-6 fw-bold">Màn hình khách thuê của Huy</h1><p class="mb-0">Chạy thử toàn bộ luồng xem đồ, giỏ thuê, thanh toán và 10 giai đoạn đơn mà không cần MongoDB hay VNPay.</p></div><button class="btn btn-outline-primary align-self-start" @click="resetDemo"><i class="bi bi-arrow-counterclockwise me-1"></i>Đặt lại demo</button></div><div class="row g-3 mt-2"><div v-for="([name, link], index) in screens" :key="link" class="col-md-6 col-lg-4"><router-link :to="link" class="card h-100 text-decoration-none text-dark demo-card"><div class="card-body d-flex gap-3"><span class="demo-number">{{ String(index + 1).padStart(2, '0') }}</span><div><div class="fw-semibold">{{ name }}</div><small class="text-muted">Mở màn hình demo</small></div><i class="bi bi-arrow-up-right ms-auto"></i></div></router-link></div></div></div></div></template>
+<style scoped>.demo-page{background:#faf8f5;min-height:72vh}.demo-hero{background:linear-gradient(120deg,#4a3b32,#785a47);color:#fff;border-radius:20px;padding:2rem;display:flex;justify-content:space-between;gap:1rem}.demo-hero p{max-width:700px;color:#f0e7e0}.demo-hero .btn{background:#fff}.demo-card{border:1px solid #e9e1d9;transition:transform .15s,box-shadow .15s}.demo-card:hover{border-color:var(--bs-primary);box-shadow:0 .25rem .75rem rgb(0 0 0 / .1);transform:translateY(-2px)}.demo-number{color:var(--bs-accent);font-weight:800;font-size:1.1rem}@media(max-width:575px){.demo-hero{padding:1.25rem;flex-direction:column}}</style>
