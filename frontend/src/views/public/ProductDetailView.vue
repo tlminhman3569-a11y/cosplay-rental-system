@@ -58,7 +58,13 @@ onMounted(load);
       <div v-if="loading" class="text-center py-5">Đang tải sản phẩm...</div>
       <div v-else-if="error && !product" class="alert alert-danger">{{ error }}</div>
       <template v-else-if="product">
-        <nav class="breadcrumb-line mb-3">Trang chủ › {{ product.category?.name || 'Cosplay' }} › {{ product.series?.name || product.category?.name }} › <strong>{{ product.characterName || product.name }}</strong></nav>
+        <nav class="breadcrumb-line mb-3">
+          Trang chủ › {{ product.category?.name || 'Cosplay' }}
+          <template v-if="product.series?.name && product.series.name !== product.category?.name">
+            › {{ product.series.name }}
+          </template>
+          › <strong>{{ product.characterName || product.name }}</strong>
+        </nav>
 
         <div class="row g-4 align-items-start">
           <section class="col-lg-7">

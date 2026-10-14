@@ -5,9 +5,9 @@ const DEMO_COMPLAINT_KEY = 'clarity-demo-complaint';
 export const demoProduct = {
   id: 'demo', name: 'Trang phục Nezuko Kamado', characterName: 'Nezuko Kamado', gender: 'FEMALE', size: 'M',
   description: 'Bộ kimono Nezuko đầy đủ, phù hợp chụp ảnh, lễ hội và các buổi gặp gỡ anime.', pricePerDay: 120000, depositAmount: 500000, quantity: 2,
-  category: { name: 'Anime' }, shop: { id: 'shop-demo', name: 'Mochi Cosplay', region: 'TP. Hồ Chí Minh' }, images: [], blockedDates: [],
+  category: { name: 'Anime' }, series: { name: 'Kimetsu no Yaiba' }, shop: { id: 'shop-demo', name: 'Mochi Cosplay', region: 'TP. Hồ Chí Minh' }, images: [], blockedDates: [],
   accessories: [{ id: 'wig-demo', name: 'Tóc giả Nezuko', type: 'WIG', rentalPricePerDay: 30000, depositAmount: 100000 }],
-  similarProducts: [{ id: 'demo-2', name: 'Trang phục Mitsuri Kanroji', pricePerDay: 140000, images: [] }]
+  similarProducts: [{ id: 'demo-2', name: 'Trang phục Mitsuri Kanroji', series: { name: 'Kimetsu no Yaiba' }, pricePerDay: 140000, images: [] }]
 };
 
 export const demoCart = {
