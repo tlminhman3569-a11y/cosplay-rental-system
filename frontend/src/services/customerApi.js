@@ -20,3 +20,8 @@ export const orderApi = {
   list: (params) => api.get('/api/customer/orders', { params }),
   detail: (id) => api.get(`/api/customer/orders/${id}`),
 };
+
+export const paymentApi = {
+  createUrl: (payload) => api.post('/api/payments/vnpay/create-url', payload),
+};
+

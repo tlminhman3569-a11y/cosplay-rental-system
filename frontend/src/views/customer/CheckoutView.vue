@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { cartApi, orderApi } from '../../services/customerApi';
+import { cartApi, orderApi, paymentApi } from '../../services/customerApi';
 import { getDemoCart, getDemoOrder, saveDemoOrder } from '../../mock/customerDemo';
 
 const route = useRoute();
@@ -10,11 +10,19 @@ const cart = ref({ items: [], totals: {} });
 const loading = ref(true);
 const error = ref('');
 const submitting = ref(false);
+const copied = ref(false);
 const method = ref('VNPAY');
 const selectedIds = JSON.parse(sessionStorage.getItem('checkout-item-ids') || 'null');
 const checkoutForm = JSON.parse(sessionStorage.getItem('checkout-form') || '{}');
 const isDemo = computed(() => route.query.demo === '1');
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
+
+function copyCard() {
+  navigator.clipboard.writeText('9704198526191432198');
+  copied.value = true;
+  setTimeout(() => (copied.value = false), 2000);
+}
+
 const methods = [
   { id: 'VNPAY', title: 'VNPAY', detail: 'Quét mã QR hoặc chuyển hướng sang VNPAY', icon: 'bi-qr-code', connected: true },
   { id: 'MOMO', title: 'Momo', detail: 'Ví điện tử Momo', icon: 'bi-wallet2' },
@@ -35,19 +43,42 @@ async function pay() {
   if (!cart.value.items.length) { error.value = 'Không có sản phẩm được chọn để thanh toán.'; return; }
   if (method.value !== 'VNPAY') { error.value = 'Momo, thẻ và ví Clarity đang được minh họa theo wireframe; thanh toán trực tiếp hiện dùng VNPAY sandbox.'; return; }
   submitting.value = true;
-  if (isDemo.value) {
-    const order = getDemoOrder();
-    Object.assign(order, checkoutForm, { totalAmount: cart.value.totals.totalAmount, orderItems: cart.value.items.map((item) => ({ id: item.id, productName: item.product.name, quantity: item.quantity, startDate: item.startDate, endDate: item.endDate })) });
-    saveDemoOrder(order);
-    setTimeout(() => router.push('/customer/checkout/result?demo=1&status=success'), 400);
-    return;
-  }
   try {
+    if (isDemo.value) {
+      const order = getDemoOrder();
+      const checkoutRef = `CHK-DEMO-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      Object.assign(order, checkoutForm, {
+        checkoutRef,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+        totalAmount: cart.value.totals.totalAmount,
+        orderItems: cart.value.items.map((item) => ({ id: item.id, productName: item.product.name, quantity: item.quantity, startDate: item.startDate, endDate: item.endDate })),
+        statusHistory: [{ status: 'PENDING', createdAt: new Date().toISOString(), note: 'Đơn đã thanh toán qua VNPay, đang chờ shop xác nhận.' }]
+      });
+      saveDemoOrder(order);
+
+      const response = await paymentApi.createUrl({
+        amount: cart.value.totals.totalAmount,
+        checkoutRef,
+        orderInfo: `Thanh toan don thue ${checkoutRef}`
+      });
+      const targetUrl = response?.paymentUrl || response?.data?.paymentUrl;
+      if (!targetUrl) throw new Error('Không nhận được URL thanh toán từ VNPay server.');
+      window.location.assign(targetUrl);
+      return;
+    }
+
     const response = await orderApi.checkout({ ...checkoutForm, cartItemIds: cart.value.items.map((item) => item.id) });
     sessionStorage.removeItem('checkout-form');
     sessionStorage.removeItem('checkout-item-ids');
-    window.location.assign(response.data.paymentUrl);
-  } catch (requestError) { error.value = requestError.response?.data?.error?.message || 'Không thể tạo thanh toán.'; submitting.value = false; }
+    const targetUrl = response?.paymentUrl || response?.data?.paymentUrl;
+    if (!targetUrl) throw new Error('Không nhận được URL thanh toán từ VNPay server.');
+    window.location.assign(targetUrl);
+  } catch (requestError) {
+    console.error('Lỗi thanh toán VNPay:', requestError);
+    error.value = requestError.response?.data?.error?.message || requestError.message || 'Không thể tạo thanh toán VNPay.';
+    submitting.value = false;
+  }
 }
 function simulateFailure() {
   if (!isDemo.value) { error.value = 'Kết quả thất bại chỉ là trạng thái minh họa trong demo.'; return; }
@@ -64,7 +95,8 @@ onMounted(load);
     <div v-else class="row g-4"><section class="col-lg-7">
       <div v-if="error" class="alert alert-warning">{{ error }}</div>
       <article class="payment-card"><div class="card-body p-4"><h2 class="h5 mb-3">Phương thức thanh toán</h2><label v-for="item in methods" :key="item.id" class="method-option" :class="{ selected: method === item.id }"><input v-model="method" type="radio" name="payment-method" :value="item.id"><i :class="`bi ${item.icon}`"></i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><span v-if="item.connected" class="connected-mark"><i class="bi bi-check-circle-fill"></i></span><span v-else class="mock-mark">Mock</span></label></div></article>
-      <article v-if="method === 'VNPAY'" class="qr-card mt-3"><div v-if="isDemo" class="qr-art"><span class="qr-corner top-left"></span><span class="qr-corner top-right"></span><span class="qr-corner bottom-left"></span><i class="bi bi-qr-code"></i><b>DEMO</b></div><div><span class="eyebrow">{{ isDemo ? 'VNPAY · MINH HỌA' : 'VNPAY SANDBOX' }}</span><h2 class="h5">{{ isDemo ? 'Quét mã QR hoặc chuyển hướng' : 'Thanh toán qua cổng VNPAY' }}</h2><p class="text-muted mb-2">{{ isDemo ? 'Màn này minh họa bố cục thanh toán trong wireframe.' : 'Bạn sẽ được chuyển đến cổng VNPay sandbox để hoàn tất giao dịch.' }}</p><strong>Số tiền {{ money(cart.totals.totalAmount) }}</strong><small v-if="isDemo" class="d-block text-muted mt-1">Mã QR minh họa · không phải mã thanh toán thật</small><button class="btn btn-primary mt-3" :disabled="submitting" @click="pay">{{ isDemo ? 'Mô phỏng thanh toán' : 'Mở cổng VNPAY' }} <i class="bi bi-box-arrow-up-right ms-1"></i></button></div></article>
+      <article v-if="method === 'VNPAY'" class="qr-card mt-3"><div class="qr-art"><span class="qr-corner top-left"></span><span class="qr-corner top-right"></span><span class="qr-corner bottom-left"></span><i class="bi bi-qr-code"></i><b>VNPAY</b></div><div><span class="eyebrow">CỔNG VNPAY SANDBOX</span><h2 class="h5">Thanh toán qua cổng VNPAY</h2><p class="text-muted mb-2">Bạn sẽ được chuyển đến Cổng thanh toán VNPay Sandbox chính thức để xác nhận giao dịch.</p><strong>Số tiền {{ money(cart.totals.totalAmount) }}</strong><div class="mt-2 p-2 bg-light rounded border small"><div class="d-flex justify-content-between align-items-center"><span><strong>Thẻ test NCB:</strong> <code>9704198526191432198</code></span><button class="btn btn-sm btn-outline-primary py-0 px-2" type="button" @click="copyCard"><i class="bi" :class="copied ? 'bi-check2' : 'bi-clipboard'"></i> {{ copied ? 'Đã copy' : 'Sao chép' }}</button></div><div class="text-muted mt-1">Tên: <code>NGUYEN VAN A</code> · Ngày: <code>07/15</code> · OTP: <code>123456</code></div></div><button class="btn btn-primary mt-3" :disabled="submitting" @click="pay">{{ submitting ? 'Đang mở VNPay...' : 'Mở cổng VNPAY Sandbox' }} <i class="bi bi-box-arrow-up-right ms-1"></i></button></div></article>
+
       <article class="escrow-card mt-3"><h2 class="h6 mb-3">Quy trình tiền được bảo vệ</h2><div class="escrow-steps"><div><i class="bi bi-shield-lock"></i><strong>Tiền được giữ</strong><small>Clarity giữ tiền thuê và cọc</small></div><i class="bi bi-chevron-right"></i><div><i class="bi bi-shop"></i><strong>Chủ đồ xác nhận</strong><small>Trong 12 giờ</small></div><i class="bi bi-chevron-right"></i><div><i class="bi bi-box-seam"></i><strong>Nhận đồ</strong><small>Đồng kiểm</small></div><i class="bi bi-chevron-right"></i><div><i class="bi bi-arrow-counterclockwise"></i><strong>Hoàn cọc</strong><small>1–3 ngày làm việc</small></div></div></article>
       <div class="d-flex gap-2 mt-3"><button class="btn btn-link" @click="simulateFailure">Xem trạng thái thanh toán thất bại (demo)</button></div>
     </section>
@@ -74,6 +106,5 @@ onMounted(load);
   </div></div>
 </template>
 
-<style scoped>
-.checkout-page{background:#faf8f5;min-height:72vh}.eyebrow{display:block;color:#8c6b52;font-size:.72rem;font-weight:800;letter-spacing:.12em;margin-bottom:.25rem}.checkout-steps{display:flex;align-items:center;gap:.55rem;font-size:.82rem;color:#786f68}.checkout-steps>i{width:36px;height:2px;background:#ded5cc}.step{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#e8e1da;font-size:.8rem;font-weight:700}.step.done,.step.active{background:var(--bs-primary);color:#fff}.payment-card,.qr-card,.escrow-card,.summary-card{background:#fff;border:1px solid #e9e1d9;border-radius:16px}.method-option{display:flex;align-items:center;gap:.8rem;border:1px solid #e4dcd4;border-radius:12px;padding:.85rem;margin-top:.7rem;cursor:pointer}.method-option.selected{border-color:var(--bs-primary);background:#fbf7f3}.method-option input{accent-color:var(--bs-primary)}.method-option>i{font-size:1.3rem;color:#795b48}.method-option small,.summary-product small{display:block;color:#786f68;font-size:.78rem;margin-top:.15rem}.method-option>span:nth-last-child(1){margin-left:auto}.connected-mark{color:#348451}.mock-mark{font-size:.68rem;background:#eee7e0;color:#655d57;padding:.25rem .45rem;border-radius:99px}.qr-card{padding:1.3rem;display:flex;align-items:center;gap:1.3rem}.qr-art{width:142px;height:142px;display:grid;place-content:center;gap:.2rem;position:relative;border:8px solid #fff;outline:1px solid #e4dcd4;background:repeating-conic-gradient(#302a26 0 25%,#fff 0 50%) 0 0/14px 14px;color:#fff;text-shadow:0 1px 3px #000;text-align:center;flex:0 0 auto}.qr-art>i{font-size:2.7rem}.qr-art>b{font-size:.7rem}.qr-corner{position:absolute;width:31px;height:31px;border:5px solid #382d26;background:#fff}.top-left{top:5px;left:5px}.top-right{top:5px;right:5px}.bottom-left{bottom:5px;left:5px}.escrow-card{padding:1.25rem}.escrow-steps{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.escrow-steps>div{display:grid;justify-items:center;text-align:center;gap:.3rem;min-width:0}.escrow-steps>div>i{font-size:1.25rem;color:#765941}.escrow-steps strong{font-size:.75rem}.escrow-steps small{font-size:.67rem;color:#786f68}.escrow-steps>.bi{color:#b6aaa0}.summary-card{padding:1.35rem;position:sticky;top:90px}.summary-product{display:flex;gap:.7rem;border-bottom:1px solid #eee7e0;padding:.85rem 0}.summary-product>div{min-width:0}.summary-product strong{font-size:.87rem}.summary-thumb{width:50px;height:58px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:#f0e5dc;color:#805b4b;overflow:hidden}.summary-thumb img{width:100%;height:100%;object-fit:cover}.summary-row,.summary-total{display:flex;justify-content:space-between;gap:.8rem;margin:.8rem 0;color:#655d57;font-size:.88rem}.summary-total{border-top:1px solid #e9e1d9;padding-top:1rem;font-size:1.05rem;font-weight:700;color:#3f332c}.security-copy{font-size:.77rem;color:#786f68}.security-copy i{color:#348451;margin-right:.25rem}@media(max-width:575px){.qr-card{align-items:flex-start;flex-direction:column}.escrow-steps{align-items:flex-start;flex-direction:column}.escrow-steps>div{grid-template-columns:28px 1fr;text-align:left;justify-items:start}.escrow-steps small{grid-column:2}.escrow-steps>.bi{display:none}.checkout-steps{font-size:.68rem;gap:.3rem}.checkout-steps>i{width:12px}}
-</style>
+<style scoped lang="scss" src="../../assets/css/customer/checkout.scss"></style>
+
