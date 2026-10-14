@@ -1,0 +1,398 @@
+// frontend/src/assets/css/customer/product-detail.scss
+// Giao diện Chi tiết sản phẩm (R07_ChiTietSP)
+
+.product-page {
+  background: #faf8f5;
+  min-height: 75vh;
+}
+
+.breadcrumb-line {
+  font-size: 0.83rem;
+  color: #766b62;
+}
+
+.product-hero {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background: #eee7e0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.costume-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 0.6rem;
+  background: radial-gradient(circle at 50% 25%, #f4d5d7, #d48791 48%, #60423d 49%, #4a342f);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+
+  i {
+    font-size: 7rem;
+  }
+}
+
+.gallery-strip {
+  display: flex;
+  gap: 0.6rem;
+  overflow: auto;
+
+  button,
+  .gallery-placeholder {
+    width: 76px;
+    height: 76px;
+    flex: 0 0 auto;
+    border: 1px solid #ded5cc;
+    border-radius: 10px;
+    background: #f1ebe5;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    color: #806b5a;
+  }
+
+  button.active {
+    border: 2px solid var(--bs-primary);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .gallery-placeholder small {
+    font-size: 0.7rem;
+  }
+}
+
+.info-chip,
+.badge-soft {
+  background: #f1e9e1;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  color: #55483f;
+
+  i {
+    color: var(--bs-primary);
+    margin-right: 0.35rem;
+  }
+}
+
+.product-heading,
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.category-badge {
+  display: inline-block;
+  border: 1px solid #d7c9bd;
+  border-radius: 999px;
+  background: #f8f5f1;
+  color: #4a3b32;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.43rem 0.7rem;
+}
+
+.favorite-button {
+  border: 1px solid #ded5cc;
+  background: #fff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: #805b4b;
+}
+
+.price-line {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #a84934;
+
+  small {
+    font-size: 0.95rem;
+    color: #786f68;
+    font-weight: 400;
+  }
+}
+
+.deposit-line {
+  color: #655d57;
+}
+
+.size-panel,
+.selection-panel,
+.booking-panel,
+.content-panel,
+.shop-panel {
+  background: #fff;
+  border: 1px solid #e7ded5;
+  border-radius: 16px;
+  padding: 1.25rem;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  color: #785943;
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+
+.size-summary {
+  background: #f8f5f1;
+  padding: 0.7rem;
+  border-radius: 8px;
+  color: #655d57;
+  font-size: 0.9rem;
+}
+
+.selection-panel > p {
+  margin: 0.35rem 0 0.8rem;
+}
+
+.accessory-option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid #eee7e0;
+  font-size: 0.9rem;
+
+  span small,
+  strong small {
+    display: block;
+    color: #786f68;
+    font-weight: 400;
+    font-size: 0.75rem;
+  }
+
+  input {
+    accent-color: var(--bs-primary);
+    width: 17px;
+    height: 17px;
+  }
+
+  strong {
+    text-align: right;
+    font-size: 0.83rem;
+  }
+}
+
+.booking-panel {
+  background: #f6f1eb;
+}
+
+.quantity-input {
+  max-width: 100px;
+}
+
+.selected-dates {
+  font-size: 0.84rem;
+  color: #655d57;
+}
+
+.price-breakdown {
+  > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.45rem 0;
+    color: #655d57;
+    font-size: 0.9rem;
+  }
+
+  .total {
+    border-top: 1px solid #ded5cc;
+    margin-top: 0.35rem;
+    padding-top: 0.8rem;
+    color: #3f332c;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+}
+
+.eyebrow {
+  display: block;
+  color: #8c6b52;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.25rem;
+}
+
+.current-size {
+  font-size: 0.82rem;
+  background: #f1e9e1;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  color: #4a3b32;
+}
+
+.size-table {
+  margin-top: 0.7rem;
+  vertical-align: middle;
+
+  thead th {
+    background: #f5f0eb;
+    color: #65564b;
+    font-size: 0.76rem;
+  }
+}
+
+.table-active {
+  --bs-table-bg: #f8f1e9;
+}
+
+.included-item {
+  padding: 0.6rem 0;
+  border-top: 1px solid #eee7e0;
+  color: #655d57;
+
+  i {
+    color: #348451;
+    margin-right: 0.55rem;
+  }
+}
+
+.policy-panel li {
+  padding: 0.45rem 0;
+  color: #655d57;
+}
+
+.rating-score {
+  color: #a66b13;
+  font-weight: 800;
+
+  i {
+    margin-right: 0.35rem;
+  }
+
+  span {
+    font-size: 0.8rem;
+    color: #786f68;
+    font-weight: 400;
+  }
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.review-card {
+  border: 1px solid #eee7e0;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.review-person {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  strong {
+    font-size: 0.9rem;
+  }
+}
+
+.review-person span,
+.shop-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e7d8ca;
+  color: #5a4538;
+  font-weight: 700;
+}
+
+.review-stars {
+  color: #d29b30;
+  margin: 0.55rem 0;
+}
+
+.review-card p {
+  margin: 0;
+  color: #655d57;
+  font-size: 0.87rem;
+}
+
+.shop-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .eyebrow {
+    margin: 0;
+  }
+}
+
+.shop-avatar {
+  width: 54px;
+  height: 54px;
+  font-size: 1.25rem;
+}
+
+.similar-card {
+  overflow: hidden;
+  border-color: #e7ded5;
+
+  .card-body {
+    padding: 0.9rem;
+  }
+
+  small {
+    font-size: 0.76rem;
+  }
+}
+
+.similar-thumb {
+  height: 180px;
+  background: #eee7e0;
+  display: grid;
+  place-items: center;
+  color: #805b4b;
+  font-size: 2.5rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+@media (max-width: 767px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-panel {
+    align-items: flex-start;
+    flex-wrap: wrap;
+
+    .btn {
+      width: 100%;
+    }
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
