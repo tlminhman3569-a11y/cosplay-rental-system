@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import MainLayout from '../layouts/MainLayout.vue';
 import DashboardLayout from '../layouts/DashboardLayout.vue';
+import { useAuthStore } from '../store/auth';
 
 const routes = [
     // ==========================================
@@ -28,8 +29,21 @@ const routes = [
     {
         path: '/auth',
         children: [
-            // { path: 'login', component: () => import('../views/auth/LoginView.vue') },
-            // { path: 'register', component: () => import('../views/auth/RegisterView.vue') },
+            {
+                path: 'login',
+                name: 'Login',
+                component: () => import('../views/auth/LoginView.vue')
+            },
+            {
+                path: 'register',
+                name: 'Register',
+                component: () => import('../views/auth/RegisterView.vue')
+            },
+            {
+                path: 'verify-email',
+                name: 'VerifyEmail',
+                component: () => import('../views/auth/VerifyEmailView.vue')
+            },
         ]
     },
 
@@ -39,6 +53,7 @@ const routes = [
     {
         path: '/vendor',
         component: DashboardLayout,
+        meta: { requiresAuth: true },
         children: [
             // { path: 'dashboard', component: () => import('../views/vendor/VendorDashboard.vue') },
             // { path: 'products', component: () => import('../views/vendor/ManageProducts.vue') },
@@ -51,6 +66,7 @@ const routes = [
     {
         path: '/admin',
         component: DashboardLayout,
+        meta: { requiresAuth: true },
         children: [
             // { path: 'users', component: () => import('../views/admin/ManageUsers.vue') },
         ]
@@ -63,6 +79,16 @@ const router = createRouter({
     // Cấu hình khi chuyển route thì cuộn lên đầu trang
     scrollBehavior() {
         return { top: 0 };
+    }
+});
+
+// Guard chặn truy cập nếu chưa đăng nhập
+router.beforeEach((to, from, next) => {
+    const authStore = useAuthStore();
+    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+        next('/auth/login');
+    } else {
+        next();
     }
 });
 
