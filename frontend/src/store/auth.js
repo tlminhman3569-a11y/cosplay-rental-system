@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
         errorMessage.value = '';
         try {
             // Lưu ý: Đổi lại endpoint thành '/auth/register' hoặc '/api/auth/register' tùy thuộc vào Backend của bạn
-            const response = await apiClient.post('/auth/register', payload);
+            const response = await apiClient.post('/api/auth/register', payload);
 
             pendingEmail.value = payload.email;
             localStorage.setItem('pendingEmail', payload.email);
@@ -48,20 +48,18 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         errorMessage.value = '';
         try {
-            const response = await apiClient.post('/auth/verify-otp', {
+            const response = await apiClient.post('/api/auth/verify-otp', {
                 email: pendingEmail.value,
                 otp,
             });
 
-            // Xử lý bọc dữ liệu chuẩn theo cấu trúc Axios response.data
-            const data = response.data;
-            if (data.token && data.user) {
-                setAuthData(data.user, data.token);
-                // Xác thực xong thì xóa email tạm
+            // response đã là data từ Backend (không gọi response.data)
+            if (response.token && response.user) {
+                setAuthData(response.user, response.token);
                 pendingEmail.value = '';
                 localStorage.removeItem('pendingEmail');
             }
-            return data;
+            return response;
         } catch (error) {
             errorMessage.value = error.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn!';
             throw error;
@@ -75,12 +73,11 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         errorMessage.value = '';
         try {
-            const response = await apiClient.post('/auth/login', credentials);
-            const data = response.data;
-            if (data.token && data.user) {
-                setAuthData(data.user, data.token);
+            const response = await apiClient.post('/api/auth/login', credentials);
+            if (response.token && response.user) {
+                setAuthData(response.user, response.token);
             }
-            return data;
+            return response;
         } catch (error) {
             errorMessage.value = error.response?.data?.message || 'Đăng nhập thất bại!';
             throw error;
