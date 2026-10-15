@@ -1,9 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
 const { sendOTPEmail } = require('../../utils/sendEmail');
+const prisma = require('../../config/prisma');
 
-const prisma = new PrismaClient();
 
 // 1. Đăng ký -> Lưu vào PendingUser & Gửi OTP
 exports.register = async (req, res) => {
