@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Khởi tạo một Axios instance với cấu hình mặc định
 const apiClient = axios.create({
-    baseURL: 'http://localhost:5000', // Port Backend
+    baseURL: 'http://localhost:3000/api', // Port Backend
     headers: {
         'Content-Type': 'application/json',
     },

@@ -40,8 +40,15 @@ const routes = [
         path: '/vendor',
         component: DashboardLayout,
         children: [
-            // { path: 'dashboard', component: () => import('../views/vendor/VendorDashboard.vue') },
-            // { path: 'products', component: () => import('../views/vendor/ManageProducts.vue') },
+            {
+                path: '',
+                redirect: '/vendor/dashboard'
+            },
+            {
+                path: 'dashboard',
+                name: 'VendorDashboard',
+                component: () => import('../views/vendor/VendorDashboard.vue')
+            },
         ]
     },
 
