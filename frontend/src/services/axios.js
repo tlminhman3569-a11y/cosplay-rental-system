@@ -45,4 +45,14 @@ apiClient.interceptors.response.use(
     }
 );
 
+// Interceptor tự động gắn Token vào Header
+apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => Promise.reject(error));
+
+export default apiClient;
 export default apiClient;
