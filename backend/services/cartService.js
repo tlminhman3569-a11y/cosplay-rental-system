@@ -3,13 +3,25 @@ const { productInclude } = require('./productService');
 
 const blockingStatuses = ['PENDING', 'CONFIRMED', 'READY', 'SHIPPING', 'RENTING', 'RETURNED'];
 
+function parseDateOnly(value) {
+    if (!value) return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 function rentalDays(startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseDateOnly(startDate);
+    const end = parseDateOnly(endDate);
+    if (!start || !end) return 0;
     const milliseconds = end.getTime() - start.getTime();
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || milliseconds < 0) return 0;
+    if (milliseconds <= 0) return 0;
     // The rental end date is the return date, so 20–22 represents two rental days.
-    return Math.max(1, Math.floor(milliseconds / 86400000));
+    return Math.floor(milliseconds / 86400000);
 }
 
 function normalizeAccessories(value) {
@@ -20,14 +32,23 @@ function normalizeAccessories(value) {
 }
 
 async function validateRental(productId, quantity, startDate, endDate, selectedAccessories) {
+    if (!startDate || !endDate) throw new Error('Vui lòng chọn ngày nhận và ngày trả đồ.');
+    const start = parseDateOnly(startDate);
+    const end = parseDateOnly(endDate);
+    if (!start || !end) throw new Error('Ngày thuê không hợp lệ.');
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (start < today) throw new Error('Ngày nhận đồ không được ở trong quá khứ.');
+    if (end <= start) throw new Error('Ngày trả đồ phải sau ngày nhận đồ ít nhất 1 ngày.');
+
     const product = await prisma.product.findFirst({ where: { id: productId, status: 'ACTIVE' }, include: { accessories: true } });
     if (!product) throw new Error('Sản phẩm không còn khả dụng.');
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > product.quantity) throw new Error('Số lượng thuê không hợp lệ.');
     const days = rentalDays(startDate, endDate);
+    if (days < 1) throw new Error('Thời gian thuê phải ít nhất là 1 ngày.');
     if (days < product.minRentalDays || days > product.maxRentalDays) throw new Error(`Thời gian thuê phải từ ${product.minRentalDays} đến ${product.maxRentalDays} ngày.`);
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
     const cleaningStart = new Date(start.getTime() - product.cleaningDays * 86400000);
     const blocked = await prisma.productBlockedDate.findFirst({ where: { productId, startDate: { lte: end }, endDate: { gte: start } } });
     if (blocked) throw new Error('Sản phẩm đã bị khóa trong khoảng ngày đã chọn.');

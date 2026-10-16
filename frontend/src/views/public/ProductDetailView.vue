@@ -12,10 +12,36 @@ const error = ref('');
 const added = ref(false);
 const selectedImage = ref(0);
 const form = ref({ quantity: 1, startDate: '', endDate: '', selectedAccessories: [] });
+
+function formatLocalDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const minStartDate = computed(() => formatLocalDate(new Date()));
+const minEndDate = computed(() => {
+  if (!form.value.startDate) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return formatLocalDate(tomorrow);
+  }
+  const [y, m, d] = form.value.startDate.split('-').map(Number);
+  const nextDay = new Date(y, m - 1, d + 1);
+  return formatLocalDate(nextDay);
+});
+
 const heroImage = computed(() => product.value?.images?.[selectedImage.value]?.url || product.value?.images?.find((image) => image.isPrimary)?.url || product.value?.images?.[0]?.url);
 const rentalDays = computed(() => {
   if (!form.value.startDate || !form.value.endDate) return 0;
-  return Math.max(0, Math.floor((new Date(`${form.value.endDate}T00:00:00`) - new Date(`${form.value.startDate}T00:00:00`)) / 86400000));
+  const [sy, sm, sd] = form.value.startDate.split('-').map(Number);
+  const [ey, em, ed] = form.value.endDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  const diff = end.getTime() - start.getTime();
+  if (diff <= 0) return 0;
+  return Math.floor(diff / 86400000);
 });
 const chosenAccessories = computed(() => (product.value?.accessories || []).filter((accessory) => form.value.selectedAccessories.some((item) => item.accessoryId === accessory.id)));
 const rentalTotal = computed(() => ((product.value?.pricePerDay || 0) + chosenAccessories.value.reduce((sum, accessory) => sum + (accessory.rentalPricePerDay || 0), 0)) * rentalDays.value * form.value.quantity);
@@ -33,9 +59,30 @@ function toggleAccessory(accessory) {
   if (index >= 0) form.value.selectedAccessories.splice(index, 1);
   else form.value.selectedAccessories.push({ accessoryId: accessory.id, quantity: 1 });
 }
+function onStartDateChange() {
+  error.value = '';
+  if (!form.value.startDate) return;
+  if (form.value.startDate < minStartDate.value) {
+    form.value.startDate = minStartDate.value;
+    error.value = 'Ngày nhận đồ không được ở trong quá khứ.';
+  }
+  if (form.value.endDate && form.value.endDate <= form.value.startDate) {
+    const [y, m, d] = form.value.startDate.split('-').map(Number);
+    const nextDay = new Date(y, m - 1, d + 1);
+    form.value.endDate = formatLocalDate(nextDay);
+  }
+}
+function onEndDateChange() {
+  error.value = '';
+  if (!form.value.endDate) return;
+  if (form.value.startDate && form.value.endDate <= form.value.startDate) {
+    error.value = 'Ngày trả đồ phải sau ngày nhận đồ ít nhất 1 ngày.';
+  }
+}
 function validateRentalPeriod() {
   if (!form.value.startDate || !form.value.endDate) { error.value = 'Hãy chọn ngày nhận và ngày trả.'; return false; }
-  if (rentalDays.value < 1) { error.value = 'Ngày trả phải sau ngày nhận.'; return false; }
+  if (form.value.startDate < minStartDate.value) { error.value = 'Ngày nhận đồ không được nhỏ hơn ngày hiện tại.'; return false; }
+  if (form.value.endDate <= form.value.startDate || rentalDays.value < 1) { error.value = 'Ngày trả đồ phải sau ngày nhận đồ ít nhất 1 ngày.'; return false; }
   const blocked = product.value.blockedDates?.some((range) => new Date(form.value.startDate) <= new Date(range.endDate) && new Date(form.value.endDate) >= new Date(range.startDate));
   if (blocked) { error.value = 'Sản phẩm đã có lịch bận trong khoảng ngày này.'; return false; }
   if (rentalDays.value < (product.value.minRentalDays || 1) || rentalDays.value > (product.value.maxRentalDays || 30)) { error.value = `Thời gian thuê phải từ ${product.value.minRentalDays || 1} đến ${product.value.maxRentalDays || 30} ngày.`; return false; }
@@ -91,7 +138,10 @@ onMounted(load);
 
             <div class="booking-panel">
               <h2 class="h6 mb-3">Chọn ngày thuê</h2>
-              <div class="row g-2"><label class="col-6 small">Ngày nhận<input v-model="form.startDate" type="date" class="form-control mt-1"></label><label class="col-6 small">Ngày trả<input v-model="form.endDate" type="date" class="form-control mt-1"></label></div>
+              <div class="row g-2">
+                <label class="col-6 small">Ngày nhận<input v-model="form.startDate" type="date" :min="minStartDate" class="form-control mt-1" @change="onStartDateChange"></label>
+                <label class="col-6 small">Ngày trả<input v-model="form.endDate" type="date" :min="minEndDate" class="form-control mt-1" @change="onEndDateChange"></label>
+              </div>
               <label class="small mt-3 d-block">Số lượng</label><input v-model.number="form.quantity" type="number" min="1" :max="product.quantity" class="form-control quantity-input">
               <p v-if="rentalDays" class="selected-dates mt-3 mb-0">{{ rentalDays }} ngày thuê · Sau mỗi lượt thuê cần {{ product.cleaningDays || 1 }} ngày vệ sinh</p>
               <div class="price-breakdown mt-3"><div><span>Thuê {{ rentalDays || '—' }} ngày</span><strong>{{ money(rentalTotal) }}</strong></div><div><span>Tiền cọc hoàn lại</span><strong>{{ money(depositTotal) }}</strong></div><div class="total"><span>Tổng thanh toán</span><strong>{{ money(rentalTotal + depositTotal) }}</strong></div></div>

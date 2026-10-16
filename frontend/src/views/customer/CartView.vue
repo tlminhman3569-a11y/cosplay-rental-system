@@ -61,6 +61,76 @@ async function changeItem(item, field, value) {
     } else { await cartApi.update(item.id, { [field]: value }); await load(); }
   } catch (requestError) { error.value = requestError.response?.data?.error?.message || 'Không thể cập nhật sản phẩm.'; await load(); }
 }
+function formatLocalDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+const minStartDate = computed(() => formatLocalDate(new Date()));
+function getMinEndDate(startDateStr) {
+  if (!startDateStr) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return formatLocalDate(tomorrow);
+  }
+  const [y, m, d] = startDateStr.slice(0, 10).split('-').map(Number);
+  const nextDay = new Date(y, m - 1, d + 1);
+  return formatLocalDate(nextDay);
+}
+async function changeDate(item, field, value) {
+  error.value = '';
+  if (!value) return;
+  const currentStart = item.startDate.slice(0, 10);
+  const currentEnd = item.endDate.slice(0, 10);
+
+  if (field === 'startDate') {
+    if (value < minStartDate.value) {
+      error.value = 'Ngày nhận đồ không được ở trong quá khứ.';
+      await load();
+      return;
+    }
+    let newEnd = currentEnd;
+    if (currentEnd <= value) {
+      const [y, m, d] = value.split('-').map(Number);
+      const nextDay = new Date(y, m - 1, d + 1);
+      newEnd = formatLocalDate(nextDay);
+    }
+    try {
+      if (route.query.demo === '1') {
+        item.startDate = `${value}T00:00:00.000Z`;
+        item.endDate = `${newEnd}T00:00:00.000Z`;
+        saveDemoCart(cart.value);
+        cart.value = getDemoCart();
+      } else {
+        await cartApi.update(item.id, { startDate: value, endDate: newEnd });
+        await load();
+      }
+    } catch (requestError) {
+      error.value = requestError.response?.data?.error?.message || 'Không thể cập nhật ngày thuê.';
+      await load();
+    }
+  } else if (field === 'endDate') {
+    if (value <= currentStart) {
+      error.value = 'Ngày trả đồ phải sau ngày nhận đồ ít nhất 1 ngày.';
+      await load();
+      return;
+    }
+    try {
+      if (route.query.demo === '1') {
+        item.endDate = `${value}T00:00:00.000Z`;
+        saveDemoCart(cart.value);
+        cart.value = getDemoCart();
+      } else {
+        await cartApi.update(item.id, { endDate: value });
+        await load();
+      }
+    } catch (requestError) {
+      error.value = requestError.response?.data?.error?.message || 'Không thể cập nhật ngày trả.';
+      await load();
+    }
+  }
+}
 function continueCheckout() {
   if (!selectedItems.value.length) { error.value = 'Chọn ít nhất một sản phẩm để tiếp tục.'; return; }
   sessionStorage.setItem('checkout-item-ids', JSON.stringify(selectedIds.value));
@@ -84,7 +154,11 @@ onMounted(load);
           <input v-model="selectedIds" class="item-select" type="checkbox" :value="item.id" :aria-label="`Chọn ${item.product.name}`">
           <div class="cart-image"><img v-if="item.product.images?.[0]?.url" :src="item.product.images[0].url" :alt="item.product.name"><i v-else class="bi bi-person-bounding-box"></i></div>
           <div class="flex-grow-1"><div class="item-title-row"><div><h2 class="h5 mb-1">{{ item.product.name }}</h2><small class="text-muted">Size {{ item.product.size || 'Linh hoạt' }} · {{ (item.selectedAccessories || []).length ? 'Có phụ kiện thuê kèm' : 'Trang phục chính' }}</small></div><button class="remove-button" aria-label="Xóa sản phẩm" @click="remove(item.id)"><i class="bi bi-trash3"></i><span>Xóa</span></button></div>
-            <div class="rental-dates mt-3"><label>Ngày nhận<input :value="item.startDate.slice(0, 10)" type="date" class="form-control mt-1" @change="changeItem(item, 'startDate', $event.target.value)"></label><span class="date-arrow">→</span><label>Ngày trả<input :value="item.endDate.slice(0, 10)" type="date" class="form-control mt-1" @change="changeItem(item, 'endDate', $event.target.value)"></label></div>
+            <div class="rental-dates mt-3">
+              <label>Ngày nhận<input :value="item.startDate.slice(0, 10)" type="date" :min="minStartDate" class="form-control mt-1" @change="changeDate(item, 'startDate', $event.target.value)"></label>
+              <span class="date-arrow">→</span>
+              <label>Ngày trả<input :value="item.endDate.slice(0, 10)" type="date" :min="getMinEndDate(item.startDate)" class="form-control mt-1" @change="changeDate(item, 'endDate', $event.target.value)"></label>
+            </div>
             <div class="item-footer"><div class="quantity"><button :disabled="item.quantity <= 1" @click="changeItem(item, 'quantity', item.quantity - 1)">−</button><strong>{{ item.quantity }}</strong><button :disabled="item.quantity >= item.product.quantity" @click="changeItem(item, 'quantity', item.quantity + 1)">+</button></div><div class="availability"><i class="bi bi-check-circle-fill"></i> Còn trống</div><div class="item-prices"><strong>{{ money(item.totals.rentalAmount) }}</strong><small>Cọc {{ money(item.totals.depositAmount) }}</small></div></div>
           </div>
         </article>

@@ -25,7 +25,8 @@ export const demoOrder = {
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function recalculate(cart) {
   const totals = cart.items.reduce((result, item) => {
-    const days = Math.max(1, Math.round((new Date(item.endDate) - new Date(item.startDate)) / 86400000));
+    const diff = new Date(item.endDate) - new Date(item.startDate);
+    const days = diff > 0 ? Math.floor(diff / 86400000) : 0;
     const accessories = item.selectedAccessories || [];
     const accessoryRental = accessories.reduce((sum, selection) => {
       const accessory = item.product.accessories?.find((entry) => entry.id === selection.accessoryId);
