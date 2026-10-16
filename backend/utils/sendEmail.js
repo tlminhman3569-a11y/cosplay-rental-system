@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-
+require('dotenv').config();
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -7,6 +7,7 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS, // App Password từ Gmail
     },
 });
+
 
 const sendOTPEmail = async (email, otp) => {
     const mailOptions = {

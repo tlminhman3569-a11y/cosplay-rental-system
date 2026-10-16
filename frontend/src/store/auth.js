@@ -34,7 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
 
             pendingEmail.value = payload.email;
             localStorage.setItem('pendingEmail', payload.email);
-            return response.data;
+            return response;
         } catch (error) {
             errorMessage.value = error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại!';
             throw error;

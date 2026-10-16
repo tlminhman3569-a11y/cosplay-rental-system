@@ -125,7 +125,7 @@ model User {
   roleId        String      @db.ObjectId
   email         String      @unique
   passwordHash  String?
-  googleId      String?     @unique
+  googleId      String?
   fullName      String
   phone         String?
   birthDate     DateTime?

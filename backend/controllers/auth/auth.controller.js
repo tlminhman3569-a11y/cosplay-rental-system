@@ -32,6 +32,7 @@ exports.register = async (req, res) => {
 
         res.status(200).json({ message: 'Mã OTP đã được gửi đến email của bạn.' });
     } catch (error) {
+        console.error('Lỗi khi Đăng ký (Register Error):', error);
         res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
     }
 };
@@ -89,6 +90,7 @@ exports.verifyOtp = async (req, res) => {
             user: { id: newUser.id, email: newUser.email, fullName: newUser.fullName, roleId: newUser.roleId },
         });
     } catch (error) {
+        console.error('Lỗi khi Verify OTP:', error);
         res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
     }
 };
@@ -120,6 +122,7 @@ exports.login = async (req, res) => {
             user: { id: user.id, email: user.email, fullName: user.fullName, roleId: user.roleId },
         });
     } catch (error) {
+        console.error('Lỗi khi Đăng nhập:', error);
         res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
     }
 };
