@@ -47,8 +47,9 @@
         <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 small text-muted">Hoặc</span>
       </div>
 
-      <div id="googleRegisterBtnContainer" class="w-100 mb-3"></div>
-      <button type="button" @click="handleGoogleRegister" class="btn btn-outline-secondary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 mb-3" :disabled="authStore.loading">
+      <div id="googleRegisterBtnContainer" class="w-100 mb-3 d-flex justify-content-center"></div>
+
+      <button v-if="!hasGoogleClientId" type="button" @click="handleGoogleRegister" class="btn btn-outline-secondary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 mb-3" :disabled="authStore.loading">
         <svg width="18" height="18" viewBox="0 0 18 18">
           <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.616z"/>
           <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
@@ -74,6 +75,7 @@ import { useAuthStore } from '../../store/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 
+const hasGoogleClientId = ref(!!import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const form = reactive({
   fullName: '',
   email: '',
@@ -104,9 +106,8 @@ const handleRegister = async () => {
 
 /* global google */
 const initGoogleSDK = () => {
-  if (typeof google !== 'undefined' && google.accounts) {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1052953258525-sample.apps.googleusercontent.com';
-
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (clientId && typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response) => {
@@ -131,11 +132,26 @@ onMounted(() => {
 });
 
 //  Hàm kích hoạt popup chọn tài khoản Google
-const handleGoogleRegister = () => {
-  if (typeof google !== 'undefined' && google.accounts) {
+const handleGoogleRegister = async () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  if (clientId && typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.prompt();
   } else {
-    alert('Hệ thống đang tải Google SDK, vui lòng thử lại sau vài giây!');
+    const userEmail = prompt('Nhập Email Google thử nghiệm của bạn:', 'khachhang.google@gmail.com');
+    if (!userEmail) return;
+
+    try {
+      await authStore.googleLogin({
+        googleId: 'google_id_' + Date.now(),
+        email: userEmail,
+        fullName: userEmail.split('@')[0],
+        avatarUrl: 'https://lh3.googleusercontent.com/a/default-user'
+      });
+      router.push('/');
+    } catch (err) {
+      // Lỗi hiển thị trong authStore.errorMessage
+    }
   }
 };
 </script>

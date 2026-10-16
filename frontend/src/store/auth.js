@@ -104,7 +104,39 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // 5. Đăng xuất
+    // 5. Quên mật khẩu
+    async function forgotPassword(payload) {
+        loading.value = true;
+        errorMessage.value = '';
+        try {
+            const response = await apiClient.post('/api/auth/forgot-password', payload);
+            return response;
+        } catch (error) {
+            errorMessage.value = error.response?.data?.message || 'Yêu cầu thất bại. Vui lòng thử lại!';
+            throw error;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    //  6. Action Đặt lại mật khẩu mới
+    async function resetPassword(payload) {
+        loading.value = true;
+        errorMessage.value = '';
+        try {
+            const response = await apiClient.post('/api/auth/reset-password', payload);
+            pendingEmail.value = '';
+            localStorage.removeItem('pendingEmail');
+            return response;
+        } catch (error) {
+            errorMessage.value = error.response?.data?.message || 'Đặt lại mật khẩu thất bại!';
+            throw error;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    // 7. Đăng xuất
     function logout() {
         user.value = null;
         token.value = '';
@@ -127,6 +159,8 @@ export const useAuthStore = defineStore('auth', () => {
         verifyOtp,
         login,
         googleLogin,
+        forgotPassword,
+        resetPassword,
         logout,
     };
 });

@@ -127,6 +127,7 @@ exports.login = async (req, res) => {
     }
 };
 
+// 4. Google Login
 exports.googleLogin = async (req, res) => {
     try {
         const { idToken, googleId, email, fullName, avatarUrl } = req.body;
@@ -204,6 +205,70 @@ exports.googleLogin = async (req, res) => {
         });
     } catch (error) {
         console.error('Lỗi khi Google Login:', error);
+        res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
+    }
+};
+
+// sửa: 5. Controller Quên mật khẩu (Lưu OTP khôi phục vào PendingUser)
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(400).json({ message: 'Email này chưa được đăng ký trong hệ thống.' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 phút
+
+        await prisma.pendingUser.upsert({
+            where: { email },
+            update: { otp, expiresAt },
+            create: { email, password: user.passwordHash || '', fullName: user.fullName, otp, expiresAt },
+        });
+
+        await sendOTPEmail(email, otp);
+
+        res.status(200).json({ message: 'Mã khôi phục mật khẩu đã gửi đến email của bạn.' });
+    } catch (error) {
+        console.error('Lỗi khi Quên mật khẩu:', error);
+        res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
+    }
+};
+
+// sửa: 6. Controller Đặt lại mật khẩu mới
+exports.resetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        const pendingRecord = await prisma.pendingUser.findUnique({ where: { email } });
+
+        if (!pendingRecord) {
+            return res.status(400).json({ message: 'Mã OTP đã hết hạn hoặc chưa gửi yêu cầu khôi phục.' });
+        }
+
+        if (pendingRecord.otp !== otp) {
+            return res.status(400).json({ message: 'Mã OTP không chính xác.' });
+        }
+
+        if (new Date() > pendingRecord.expiresAt) {
+            await prisma.pendingUser.delete({ where: { email } });
+            return res.status(400).json({ message: 'Mã OTP đã quá hạn. Vui lòng gửi lại yêu cầu.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { passwordHash: hashedPassword },
+        });
+
+        await prisma.pendingUser.delete({ where: { email } });
+
+        res.status(200).json({ message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay.' });
+    } catch (error) {
+        console.error('Lỗi khi Đặt lại mật khẩu:', error);
         res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
     }
 };
