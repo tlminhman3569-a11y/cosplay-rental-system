@@ -18,6 +18,18 @@ const routes = [
                 // Trỏ về trang HomeView bạn đã làm ở bước trước
                 component: () => import('../views/public/HomeView.vue')
             },
+            // Route tìm kiếm sản phẩm cosplay
+            {
+                path: 'search',
+                name: 'Search',
+                component: () => import('../views/public/SearchView.vue')
+            },
+            //  Route tìm kiếm gian hàng / chủ đồ
+            {
+                path: 'shops',
+                name: 'ShopSearch',
+                component: () => import('../views/public/ShopSearchView.vue')
+            },
             // Team code Customer sẽ thêm route vào đây. Ví dụ:
             // { path: 'profile', component: () => import('../views/customer/ProfileView.vue') }
         ]

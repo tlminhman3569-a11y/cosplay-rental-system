@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const prisma = require('./config/prisma');
 const authRoutes = require('./routes/auth/auth.routes');
+const publicRoutes = require('./routes/public/public.routes');
 
 dotenv.config();
 
@@ -15,6 +16,8 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
+
 // Kiểm tra kết nối Prisma bằng một API đơn giản
 app.get('/', async (req, res) => {
     try {

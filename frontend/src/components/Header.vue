@@ -15,8 +15,25 @@
 
       <!-- Navigation Menu -->
       <nav class="d-none d-md-flex gap-4">
-        <router-link to="/" class="text-decoration-none fw-bold pb-1 text-primary" style="border-bottom: 2px solid var(--bs-primary);">Trang chủ</router-link>
-        <a href="#" class="text-decoration-none pb-1 menu-link text-dark">Khám phá đồ</a>
+        <!-- sửa: Dùng exact-active-class để "Trang chủ" chỉ sáng khi ở đúng trang chủ "/" -->
+        <router-link
+            to="/"
+            class="text-decoration-none pb-1 menu-link text-dark"
+            exact-active-class="fw-bold text-primary border-bottom border-2 border-primary"
+        >
+          Trang chủ
+        </router-link>
+
+        <!-- sửa: "Khám phá đồ" sáng khi truy cập /search hoặc /shops -->
+        <router-link
+            to="/search"
+            class="text-decoration-none pb-1 menu-link text-dark"
+            active-class="fw-bold text-primary border-bottom border-2 border-primary"
+            :class="{ 'fw-bold text-primary border-bottom border-2 border-primary': $route.path === '/shops' }"
+        >
+          Khám phá đồ
+        </router-link>
+
         <a href="#" class="text-decoration-none pb-1 menu-link text-dark">Hướng dẫn thuê</a>
         <a href="#" class="text-decoration-none pb-1 menu-link text-dark">Chính sách</a>
       </nav>
