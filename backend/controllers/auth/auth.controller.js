@@ -126,3 +126,84 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
     }
 };
+
+exports.googleLogin = async (req, res) => {
+    try {
+        const { idToken, googleId, email, fullName, avatarUrl } = req.body;
+
+        let gId = googleId;
+        let gEmail = email;
+        let gName = fullName;
+        let gAvatar = avatarUrl;
+
+        // Nếu gửi idToken từ Google SDK -> Gọi lên Google Server để lấy thông tin thật 100%
+        if (idToken) {
+            const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+            if (!googleRes.ok) {
+                return res.status(400).json({ message: 'Mã xác thực Google không hợp lệ hoặc đã hết hạn.' });
+            }
+            const payload = await googleRes.json();
+            gId = payload.sub;
+            gEmail = payload.email;
+            gName = payload.name;
+            gAvatar = payload.picture;
+        }
+
+        if (!gEmail || !gId) {
+            return res.status(400).json({ message: 'Thông tin Google không hợp lệ.' });
+        }
+
+        // Tìm user đã tồn tại theo googleId hoặc email
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { googleId: gId },
+                    { email: gEmail }
+                ]
+            }
+        });
+
+        const defaultRole = await prisma.role.findUnique({ where: { name: 'CUSTOMER' } });
+        if (!defaultRole) {
+            return res.status(500).json({ message: 'Không tìm thấy vai trò mặc định trong hệ thống.' });
+        }
+
+        if (user) {
+            // Nếu đã tồn tại tài khoản bằng email thường thì liên kết thêm googleId
+            if (!user.googleId) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { googleId: gId, avatarUrl: user.avatarUrl || gAvatar }
+                });
+            }
+        } else {
+            // Tạo tài khoản mới trực tiếp từ Google
+            user = await prisma.user.create({
+                data: {
+                    email: gEmail,
+                    fullName: gName || 'Khách hàng Google',
+                    googleId: gId,
+                    avatarUrl: gAvatar,
+                    roleId: defaultRole.id,
+                    emailVerified: true,
+                }
+            });
+        }
+
+        // Cấp JWT Token của hệ thống
+        const token = jwt.sign(
+            { id: user.id, roleId: user.roleId },
+            process.env.JWT_SECRET || 'secret_key',
+            { expiresIn: '7d' }
+        );
+
+        res.status(200).json({
+            message: 'Đăng nhập bằng Google thành công!',
+            token,
+            user: { id: user.id, email: user.email, fullName: user.fullName, roleId: user.roleId, avatarUrl: user.avatarUrl },
+        });
+    } catch (error) {
+        console.error('Lỗi khi Google Login:', error);
+        res.status(500).json({ message: 'Lỗi máy chủ', error: error.message });
+    }
+};

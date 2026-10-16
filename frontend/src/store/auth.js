@@ -86,7 +86,25 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // 4. Đăng xuất
+    // 4. Đăng nhập bằng google
+    async function googleLogin(googlePayload) {
+        loading.value = true;
+        errorMessage.value = '';
+        try {
+            const response = await apiClient.post('/api/auth/google', googlePayload);
+            if (response.token && response.user) {
+                setAuthData(response.user, response.token);
+            }
+            return response;
+        } catch (error) {
+            errorMessage.value = error.response?.data?.message || 'Đăng nhập bằng Google thất bại!';
+            throw error;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    // 5. Đăng xuất
     function logout() {
         user.value = null;
         token.value = '';
@@ -108,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
         register,
         verifyOtp,
         login,
+        googleLogin,
         logout,
     };
 });
