@@ -17,6 +17,21 @@ const routes = [
                 // Trỏ về trang HomeView bạn đã làm ở bước trước
                 component: () => import('../views/public/HomeView.vue')
             },
+            { path: 'products/:id', name: 'ProductDetail', component: () => import('../views/public/ProductDetailView.vue') },
+            { path: 'customer/cart', name: 'RentalCart', component: () => import('../views/customer/CartView.vue') },
+            { path: 'customer/rental-request', name: 'RentalRequest', component: () => import('../views/customer/RentalRequestView.vue') },
+            { path: 'customer/checkout', name: 'Checkout', component: () => import('../views/customer/CheckoutView.vue'), props: { mode: 'payment' } },
+            { path: 'customer/checkout/result', name: 'CheckoutResult', component: () => import('../views/customer/CheckoutResultView.vue') },
+            { path: 'customer/orders', name: 'MyOrders', component: () => import('../views/customer/OrdersView.vue') },
+            { path: 'customer/orders/:id', name: 'OrderTracking', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'tracking' } },
+            { path: 'customer/orders/:id/pending', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'pending' } },
+            { path: 'customer/orders/:id/receive', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'receive' } },
+            { path: 'customer/orders/:id/return', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'return' } },
+            { path: 'customer/orders/:id/refund', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'refund' } },
+            { path: 'customer/orders/:id/cancel', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'cancel' } },
+            { path: 'customer/orders/:id/review', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'review' } },
+            { path: 'customer/orders/:id/complaint', component: () => import('../views/customer/OrderStageView.vue'), props: { stage: 'complaint' } },
+            { path: 'customer/demo', name: 'CustomerDemo', component: () => import('../views/customer/CustomerDemoView.vue') },
             // Team code Customer sẽ thêm route vào đây. Ví dụ:
             // { path: 'profile', component: () => import('../views/customer/ProfileView.vue') }
         ]

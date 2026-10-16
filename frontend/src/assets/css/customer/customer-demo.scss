@@ -1,0 +1,50 @@
+// frontend/src/assets/css/customer/customer-demo.scss
+// Giao diện Trung tâm Demo màn hình khách thuê
+
+.demo-page {
+  background: #faf8f5;
+  min-height: 72vh;
+}
+
+.demo-hero {
+  background: linear-gradient(120deg, #4a3b32, #785a47);
+  color: #fff;
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+
+  p {
+    max-width: 700px;
+    color: #f0e7e0;
+  }
+
+  .btn {
+    background: #fff;
+  }
+}
+
+.demo-card {
+  border: 1px solid #e9e1d9;
+  transition: transform 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 0.1);
+    transform: translateY(-2px);
+  }
+}
+
+.demo-number {
+  color: var(--bs-accent);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 575px) {
+  .demo-hero {
+    padding: 1.25rem;
+    flex-direction: column;
+  }
+}
