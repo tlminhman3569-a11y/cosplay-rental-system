@@ -1,30 +1,22 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const prisma = require('./config/prisma');
+import dotenv from 'dotenv'
+import { prisma } from './config/db.js'
+import app from './app.js'
 
-dotenv.config();
+dotenv.config()
+const PORT = process.env.PORT || 3000
 
-const app = express();
-
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
-    credentials: true
-}));
-app.use(express.json());
-
-// Kiểm tra kết nối Prisma bằng một API đơn giản
-app.get('/', async (req, res) => {
+async function start() {
     try {
-        // Thử query vào DB (nếu kết nối thành công sẽ không lỗi)
-        await prisma.$connect();
-        res.send('Cosplay Rental API is running & Prisma Connected to MongoDB!');
-    } catch (error) {
-        res.status(500).send(`Database Connection Error: ${error.message}`);
-    }
-});
+        await prisma.$connect()
+        console.log('✅ Đã kết nối MongoDB qua Prisma')
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server đang chạy tại port ${PORT}`);
-});
+        app.listen(PORT, () => {
+            console.log(`🚀 Server chạy tại http://localhost:${PORT}/api`)
+        })
+    } catch (error) {
+        console.error('❌ Lỗi khởi động:', error)
+        process.exit(1)
+    }
+}
+
+start()

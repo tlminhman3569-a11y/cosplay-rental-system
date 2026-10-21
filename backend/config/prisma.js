@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient();
-
-module.exports = prisma;
+// Một PrismaClient duy nhất cho cả server (named export để models/middlewares import { prisma })
+export const prisma = new PrismaClient()

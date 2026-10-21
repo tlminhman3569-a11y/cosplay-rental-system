@@ -9,9 +9,9 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import LoadState from '@/components/LoadState.vue'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
-import { ownerService } from '@/services/ownerService'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
-import { REGISTER_ID_SLOTS, REGISTER_FLOW } from '@/config/ownerUi'
+import { REGISTER_ID_SLOTS, REGISTER_FLOW } from '@/config/vendorUi'
 
 const ui = useUiStore()
 const auth = useAuthStore()
