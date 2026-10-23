@@ -19,7 +19,13 @@ const filteredOrders = computed(() => orders.value.filter((order) => {
   const matchesSearch = !needle || [order.id, order.checkoutRef, ...(order.orderItems || []).map((item) => item.productName)].filter(Boolean).some((value) => value.toLocaleLowerCase('vi').includes(needle));
   return matchesStatus && matchesSearch;
 }));
-const routeFor = (order) => route.query.demo === '1' ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`;
+const routeFor = (order) => {
+  const isDemoMode = route.query.demo === '1';
+  if (order.status === 'PENDING') {
+    return isDemoMode ? `/customer/orders/${order.id}/pending?demo=1` : `/customer/orders/${order.id}/pending`;
+  }
+  return isDemoMode ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`;
+};
 async function load() {
   loading.value = true;
   if (route.query.demo === '1') { orders.value = [getDemoOrder()]; loading.value = false; return; }

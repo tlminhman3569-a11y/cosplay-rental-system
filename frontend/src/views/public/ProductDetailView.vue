@@ -1,8 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { cartApi, productApi } from '../../services/customerApi';
-import { addDemoCartItem, demoProduct } from '../../mock/customerDemo';
+import { addDemoCartItem, demoProduct, demoProduct2 } from '../../mock/customerDemo';
 
 const route = useRoute();
 const router = useRouter();
@@ -49,11 +49,33 @@ const depositTotal = computed(() => ((product.value?.depositAmount || 0) + chose
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 
 async function load() {
-  if (route.query.demo === '1') { product.value = demoProduct; loading.value = false; return; }
-  try { product.value = (await productApi.detail(route.params.id)).data; }
-  catch (requestError) { error.value = requestError.response?.data?.error?.message || 'Không thể tải sản phẩm.'; }
-  finally { loading.value = false; }
+  const isDemo = route.query.demo === '1' || route.params.id === 'demo' || route.params.id === 'demo-2';
+  if (isDemo) {
+    product.value = route.params.id === 'demo-2' ? demoProduct2 : demoProduct;
+    loading.value = false;
+    return;
+  }
+  try {
+    product.value = (await productApi.detail(route.params.id)).data;
+  } catch (requestError) {
+    error.value = requestError.response?.data?.error?.message || 'Không thể tải sản phẩm.';
+  } finally {
+    loading.value = false;
+  }
 }
+
+watch(
+  () => [route.params.id, route.query.demo],
+  () => {
+    loading.value = true;
+    error.value = '';
+    added.value = false;
+    selectedImage.value = 0;
+    form.value.selectedAccessories = [];
+    load();
+  }
+);
+
 function toggleAccessory(accessory) {
   const index = form.value.selectedAccessories.findIndex((item) => item.accessoryId === accessory.id);
   if (index >= 0) form.value.selectedAccessories.splice(index, 1);
@@ -92,7 +114,11 @@ async function addToCart() {
   error.value = ''; added.value = false;
   if (!validateRentalPeriod()) return;
   if (Number(form.value.quantity) < 1 || Number(form.value.quantity) > product.value.quantity) { error.value = 'Số lượng thuê vượt quá số bộ còn có.'; return; }
-  if (route.query.demo === '1') { addDemoCartItem({ ...form.value }); added.value = true; return; }
+  if (route.query.demo === '1' || route.params.id === 'demo' || route.params.id === 'demo-2') {
+    addDemoCartItem({ ...form.value, product: product.value });
+    added.value = true;
+    return;
+  }
   try { await cartApi.create({ productId: product.value.id, ...form.value }); added.value = true; }
   catch (requestError) { error.value = requestError.response?.data?.error?.message || 'Không thể thêm vào giỏ.'; }
 }
@@ -160,7 +186,7 @@ onMounted(load);
 
         <section class="shop-panel mt-4"><div class="shop-avatar">{{ (product.shop?.name || 'C').slice(0, 1) }}</div><div class="flex-grow-1"><span class="eyebrow">CHỦ CHO THUÊ</span><h2 class="h5 mb-1">{{ product.shop?.name || 'Clarity shop' }}</h2><p class="text-muted mb-0">{{ product.shop?.region || 'Thông tin khu vực chưa có' }} · Phản hồi nhanh · {{ product.rentalCount || 0 }} lượt thuê</p></div><button class="btn btn-outline-primary">Xem gian hàng</button></section>
 
-        <section v-if="product.similarProducts?.length" class="mt-5"><div class="section-heading mb-3"><div><span class="eyebrow">CÓ THỂ BẠN SẼ THÍCH</span><h2 class="h4 mb-0">Sản phẩm tương tự</h2></div><span class="text-muted small">Cùng series hoặc danh mục</span></div><div class="row g-3"><div v-for="item in product.similarProducts" :key="item.id" class="col-6 col-md-3"><router-link :to="`/products/${item.id}`" class="card similar-card h-100 text-decoration-none text-dark"><div class="similar-thumb"><img v-if="item.images?.[0]?.url" :src="item.images[0].url" :alt="item.name"><i v-else class="bi bi-person-heart"></i></div><div class="card-body"><small class="text-muted">{{ item.series?.name || item.category?.name }}</small><div class="fw-semibold mt-1">{{ item.name }}</div><div class="text-danger mt-2">{{ money(item.pricePerDay) }}<small>/ngày</small></div><small class="text-muted">Cọc {{ money(item.depositAmount) }}</small></div></router-link></div></div></section>
+        <section v-if="product.similarProducts?.length" class="mt-5"><div class="section-heading mb-3"><div><span class="eyebrow">CÓ THỂ BẠN SẼ THÍCH</span><h2 class="h4 mb-0">Sản phẩm tương tự</h2></div><span class="text-muted small">Cùng series hoặc danh mục</span></div><div class="row g-3"><div v-for="item in product.similarProducts" :key="item.id" class="col-6 col-md-3"><router-link :to="route.query.demo === '1' ? `/products/${item.id}?demo=1` : `/products/${item.id}`" class="card similar-card h-100 text-decoration-none text-dark"><div class="similar-thumb"><img v-if="item.images?.[0]?.url" :src="item.images[0].url" :alt="item.name"><i v-else class="bi bi-person-heart"></i></div><div class="card-body"><small class="text-muted">{{ item.series?.name || item.category?.name }}</small><div class="fw-semibold mt-1">{{ item.name }}</div><div class="text-danger mt-2">{{ money(item.pricePerDay) }}<small>/ngày</small></div><small class="text-muted">Cọc {{ money(item.depositAmount) }}</small></div></router-link></div></div></section>
       </template>
     </div>
   </div>

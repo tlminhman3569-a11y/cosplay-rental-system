@@ -9,6 +9,15 @@ export const demoProduct = {
   accessories: [{ id: 'wig-demo', name: 'Tóc giả Nezuko', type: 'WIG', rentalPricePerDay: 30000, depositAmount: 100000 }],
   similarProducts: [{ id: 'demo-2', name: 'Trang phục Mitsuri Kanroji', series: { name: 'Kimetsu no Yaiba' }, pricePerDay: 140000, images: [] }]
 };
+export const demoProduct2 = {
+  id: 'demo-2', name: 'Trang phục Mitsuri Kanroji', characterName: 'Mitsuri Kanroji', gender: 'FEMALE', size: 'M',
+  description: 'Đồng phục Thợ săn quỷ kèm áo khoác trắng và thắt lưng.', pricePerDay: 140000, depositAmount: 600000, quantity: 1,
+  category: { name: 'Anime' }, series: { name: 'Kimetsu no Yaiba' }, shop: { id: 'shop-demo', name: 'Mochi Cosplay', region: 'TP. Hồ Chí Minh' }, images: [], blockedDates: [],
+  accessories: [{ id: 'sword-demo', name: 'Kiếm Nichirin uốn dẻo', type: 'PROP', rentalPricePerDay: 40000, depositAmount: 150000 }],
+  similarProducts: [{ id: 'demo', name: 'Trang phục Nezuko Kamado', series: { name: 'Kimetsu no Yaiba' }, pricePerDay: 120000, images: [] }]
+};
+
+
 
 export const demoCart = {
   items: [{ id: 'cart-demo', product: demoProduct, quantity: 1, startDate: '2026-10-20T00:00:00.000Z', endDate: '2026-10-22T00:00:00.000Z', selectedAccessories: [{ accessoryId: 'wig-demo', quantity: 1 }], totals: { rentalDays: 2, rentalAmount: 300000, depositAmount: 600000 } }],
@@ -49,9 +58,14 @@ export function getDemoCart() { return recalculate(JSON.parse(localStorage.getIt
 export function saveDemoCart(cart) { localStorage.setItem(DEMO_CART_KEY, JSON.stringify(recalculate(cart))); return cart; }
 export function addDemoCartItem(payload) {
   const cart = getDemoCart();
-  const sameItem = cart.items.find((item) => item.product.id === demoProduct.id && item.startDate.slice(0, 10) === payload.startDate && item.endDate.slice(0, 10) === payload.endDate);
-  if (sameItem) sameItem.quantity += payload.quantity;
-  else cart.items.push({ id: `cart-demo-${Date.now()}`, product: clone(demoProduct), ...payload, totals: {} });
+  const productToAdd = payload.product ? clone(payload.product) : clone(demoProduct);
+  const sameItem = cart.items.find((item) => item.product.id === productToAdd.id && item.startDate.slice(0, 10) === payload.startDate && item.endDate.slice(0, 10) === payload.endDate);
+  if (sameItem) {
+    sameItem.quantity += payload.quantity;
+  } else {
+    const { product: _, ...rest } = payload;
+    cart.items.push({ id: `cart-demo-${Date.now()}`, product: productToAdd, ...rest, totals: {} });
+  }
   return saveDemoCart(cart);
 }
 export function getDemoOrder() { return JSON.parse(localStorage.getItem(DEMO_ORDER_KEY) || JSON.stringify(clone(demoOrder))); }

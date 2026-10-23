@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { orderApi } from '../../services/customerApi';
 import { getDemoComplaint, getDemoOrder, saveDemoComplaint, updateDemoOrder } from '../../mock/customerDemo';
@@ -27,6 +27,7 @@ const checklist = ref({ complete: true, condition: true, size: true, clean: true
 const evidenceFiles = ref([]);
 const complaintSubmitted = ref(false);
 const returnMethod = ref('Grab Express');
+const refundMethod = ref('VNPAY');
 const disputeReason = ref('Không đồng ý với mức bồi thường hư hỏng');
 const disputeResolution = ref('Hoàn cọc sau khi trừ phí trễ');
 const disputeReasonOptions = [
@@ -74,7 +75,13 @@ const currentIndex = computed(() => {
   const map = { AWAITING_PAYMENT: 0, PENDING: 0, CONFIRMED: 1, READY: 2, SHIPPING: 3, RENTING: 5, RETURNED: 7, COMPLETED: 9, CANCELLED: -1 };
   return map[screenStatus.value] ?? 0;
 });
-const isDisputed = computed(() => isDemo.value || Boolean(order.value?.dispute || order.value?.disputeId));
+const isDisputed = computed(() => {
+  if (props.stage === 'complaint') return true;
+  if (isDemo.value) {
+    return Boolean(getDemoComplaint() || order.value?.dispute || order.value?.disputeId || order.value?.status === 'DISPUTED');
+  }
+  return Boolean(order.value?.dispute || order.value?.disputeId || order.value?.status === 'DISPUTED');
+});
 const deposit = computed(() => order.value?.depositTotal ?? order.value?.depositAmount ?? 1000000);
 const rental = computed(() => order.value?.rentalTotal ?? Math.max(0, (order.value?.totalAmount || 1500000) - deposit.value));
 const damageFee = computed(() => isDemo.value ? 300000 : 0);
@@ -141,7 +148,8 @@ function runAction(action) {
   }
   if (action === 'refund') {
     actionCompleted.value.refund = true;
-    notice.value = `Đã đồng ý khoản khấu trừ; dự kiến hoàn ${money(expectedRefund.value)} về tài khoản.`;
+    const destText = refundMethod.value === 'VNPAY' ? 'về tài khoản VNPAY' : 'vào ví Clarity';
+    notice.value = `Đã đồng ý khoản khấu trừ; dự kiến hoàn ${money(expectedRefund.value)} ${destText}.`;
     if (isDemo.value) demoUpdate('COMPLETED', notice.value);
     else if (order.value) order.value.status = 'COMPLETED';
     return;
@@ -188,12 +196,64 @@ function scrollToActiveSection() {
     });
   }
 }
-watch(() => props.stage, () => {
+const countdownText = ref('09:00:00');
+let timerInterval = null;
+
+function formatDuration(totalSeconds) {
+  if (totalSeconds <= 0) return '00:00:00';
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+function updateCountdown() {
+  if (!order.value?.createdAt) {
+    countdownText.value = '09:00:00';
+    return;
+  }
+  const createdTime = new Date(order.value.createdAt).getTime();
+  const deadline = createdTime + 12 * 60 * 60 * 1000;
+  const remainingSeconds = Math.floor((deadline - Date.now()) / 1000);
+
+  if (remainingSeconds > 0) {
+    countdownText.value = formatDuration(remainingSeconds);
+  } else {
+    if (isDemo.value) {
+      const cycle = 9 * 3600;
+      const fakeRemaining = cycle - (Math.floor(Date.now() / 1000) % cycle);
+      countdownText.value = formatDuration(fakeRemaining);
+    } else {
+      countdownText.value = '00:00:00 (Hết hạn)';
+    }
+  }
+}
+
+function startCountdown() {
+  if (timerInterval) clearInterval(timerInterval);
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
+}
+
+watch(() => props.stage, (newStage) => {
   scrollToActiveSection();
+  if (newStage === 'pending') {
+    startCountdown();
+  } else if (timerInterval) {
+    clearInterval(timerInterval);
+  }
 });
-onMounted(() => {
-  load();
+
+onMounted(async () => {
+  await load();
   scrollToActiveSection();
+  if (props.stage === 'pending') {
+    startCountdown();
+  }
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
 });
 </script>
 
@@ -204,7 +264,7 @@ onMounted(() => {
     <header class="stage-hero"><div class="stage-icon"><i :class="`bi ${title[2]}`"></i></div><div class="flex-grow-1"><span class="eyebrow">ĐƠN {{ order?.id?.slice(-12)?.toUpperCase() || 'ORD-2026-8801' }}</span><h1 class="display-6 fw-bold mb-1">{{ title[0] }}</h1><p class="mb-0">{{ title[1] }}</p></div><span class="status-pill" :class="{ disputed: isDisputed && ['tracking','refund','complaint'].includes(stage) }">{{ isDisputed && ['tracking','refund','complaint'].includes(stage) ? 'Có tranh chấp' : statusLabels[screenStatus] }}</span></header>
     <div v-if="notice" class="alert alert-success mt-3"><i class="bi bi-check-circle me-2"></i>{{ notice }}</div>
 
-    <section v-if="stage !== 'cancel' && screenStatus !== 'CANCELLED'" class="timeline-card mt-4"><div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">{{ stage === 'pending' ? 'Thời gian còn lại' : 'Tiến trình đơn thuê' }}</h2><small v-if="stage !== 'pending'" class="text-muted">Cập nhật từ chủ đồ</small></div><div v-if="stage === 'pending'" class="countdown"><strong>Còn 09:00:00</strong><span>Chủ đồ cần xác nhận trong 12 giờ kể từ khi thanh toán.</span></div><div class="timeline"> <div v-for="(step, index) in dbSteps" :key="step.label" class="timeline-step" :class="{ done: index < currentIndex, current: index === currentIndex }"><span class="step-icon">{{ index < currentIndex ? '✓' : index + 1 }}</span><strong>{{ step.label }}</strong></div></div></section>
+    <section v-if="stage !== 'cancel' && screenStatus !== 'CANCELLED'" class="timeline-card mt-4"><div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">{{ stage === 'pending' ? 'Thời gian còn lại' : 'Tiến trình đơn thuê' }}</h2><small v-if="stage !== 'pending'" class="text-muted">Cập nhật từ chủ đồ</small></div><div v-if="stage === 'pending'" class="countdown"><strong>Còn {{ countdownText }}</strong><span>Chủ đồ cần xác nhận trong 12 giờ kể từ khi thanh toán.</span></div><div class="timeline"> <div v-for="(step, index) in dbSteps" :key="step.label" class="timeline-step" :class="{ done: index < currentIndex, current: index === currentIndex }"><span class="step-icon">{{ index < currentIndex ? '✓' : index + 1 }}</span><strong>{{ step.label }}</strong></div></div></section>
 
     <div class="row g-4 mt-1"><section class="col-lg-7"><article class="detail-card"><div class="d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Sản phẩm thuê</h2><span class="shop-name"><i class="bi bi-shop me-1"></i>{{ order?.shop?.name || 'Mai Cosplay House' }}</span></div><div v-for="item in order?.orderItems || []" :key="item.id" class="product-line"><div class="product-thumb"><img v-if="item.product?.images?.[0]?.url" :src="item.product.images[0].url"><i v-else class="bi bi-person-heart"></i></div><div class="flex-grow-1"><strong>{{ item.productName }}</strong><span class="d-block small text-muted mt-1">Size {{ item.product?.size || 'M' }} · Thuê {{ date(item.startDate) }} – {{ date(item.endDate) }} · {{ item.quantity }} bộ</span><small class="text-muted">{{ order?.shippingProvider || 'Grab Express' }}</small></div></div><div v-if="!order?.orderItems?.length" class="product-line"><div class="product-thumb"><i class="bi bi-person-heart"></i></div><div><strong>Cosplay Raiden Shogun – Genshin Impact</strong><span class="d-block small text-muted mt-1">Chủ đồ: Trần Thị Mai · Size M</span><small>Thuê 20/10–22/10/2026 · {{ order?.shippingProvider || 'Grab Express' }}</small></div></div><div class="order-money"><div><span>Mã giao dịch</span><strong>{{ order?.checkoutRef || 'TX-99812' }} · VNPAY</strong></div><div><span>Tổng thanh toán</span><strong>{{ money(order?.totalAmount || 1500000) }}</strong></div><div><span>Tiền đang được Clarity giữ</span><strong>{{ money(order?.totalAmount || 1500000) }}</strong></div><small>Tiền thuê {{ money(rental) }} + cọc {{ money(deposit) }}. Chưa chuyển cho chủ đồ.</small></div></article></section><aside class="col-lg-5"><article class="detail-card"><h2 class="h5"><i class="bi bi-geo-alt me-2"></i>Thông tin giao nhận</h2><div class="info-row"><i class="bi bi-house"></i><span>{{ [order?.shippingAddress, order?.city].filter(Boolean).join(', ') || '12 Trần Duy Hưng, Cầu Giấy, Hà Nội' }}</span></div><div class="info-row"><i class="bi bi-truck"></i><span>{{ order?.shippingProvider || 'Grab Express' }} · {{ order?.shippingMethod || 'Giao tận nơi' }}</span></div><div class="info-row"><i class="bi bi-person"></i><span>{{ order?.receiverName || 'Phạm Văn Minh' }} · {{ order?.receiverPhone || '0912 334 881' }}</span></div></article><article class="detail-card mt-3"><h2 class="h5">Điều gì xảy ra tiếp theo?</h2><p class="small text-muted mb-2">Chủ đồ xác nhận để đơn chuyển sang chuẩn bị. Nếu chủ đồ từ chối hoặc quá hạn, khoản thanh toán được hoàn theo chính sách.</p><button class="btn btn-outline-primary btn-sm">Chat với chủ đồ</button></article></aside></div>
 
@@ -235,7 +295,7 @@ onMounted(() => {
           <button type="button" class="btn btn-primary" :disabled="!Object.values(checklist).every(Boolean)" @click="runAction('received')">Xác nhận nhận đồ</button>
           <button type="button" class="btn btn-outline-danger" @click="notice = 'Đã ghi nhận yêu cầu hỗ trợ về tình trạng trang phục.'">Báo vấn đề</button>
         </div>
-        <button v-else type="button" class="btn btn-outline-primary mt-3" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Xem tiến trình đơn</button>
+        <button v-else type="button" class="btn btn-primary mt-3" @click="router.push(isDemo ? `/customer/orders/${order.id}/return?demo=1` : `/customer/orders/${order.id}/return`)">Tiếp tục → Trả đồ</button>
       </section>
 
       <section v-if="stage === 'return'" class="row g-4 mt-1">
@@ -272,7 +332,7 @@ onMounted(() => {
             <p class="small text-muted">Cọc đang giữ: {{ money(deposit) }} · Cách trả: {{ returnMethod }}</p>
             <div v-if="actionCompleted.returned" class="alert alert-success mt-3 mb-2"><i class="bi bi-check-circle-fill me-2"></i>{{ notice }}</div>
             <button v-if="!actionCompleted.returned" type="button" class="btn btn-primary w-100" @click="runAction('returned')">Xác nhận đã trả</button>
-            <button v-else type="button" class="btn btn-outline-primary w-100 mt-2" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Xem tiến trình đơn</button>
+            <button v-else type="button" class="btn btn-primary w-100 mt-2" @click="router.push(isDemo ? `/customer/orders/${order.id}/refund?demo=1` : `/customer/orders/${order.id}/refund`)">Tiếp tục → Hoàn cọc</button>
             <small class="d-block text-muted mt-3">Sau khi trả, chủ shop có 24 giờ để kiểm tra đồ.</small>
           </article>
         </div>
@@ -294,8 +354,12 @@ onMounted(() => {
             </div>
             <h3 class="h6 mt-4">Phương thức hoàn cọc</h3>
             <div class="return-methods">
-              <label class="selected"><input type="radio" checked name="refund-method">Về VNPAY (nguồn thanh toán ban đầu)</label>
-              <label><input type="radio" name="refund-method">Về ví Clarity · nhận ngay</label>
+              <label :class="{ selected: refundMethod === 'VNPAY' }">
+                <input v-model="refundMethod" type="radio" value="VNPAY" name="refund-method">Về VNPAY (nguồn thanh toán ban đầu)
+              </label>
+              <label :class="{ selected: refundMethod === 'WALLET' }">
+                <input v-model="refundMethod" type="radio" value="WALLET" name="refund-method">Về ví Clarity · nhận ngay
+              </label>
             </div>
             <p class="small text-muted mt-3">Bạn có 24 giờ để phản hồi; nếu không đồng ý, khoản cọc được giữ nguyên trong lúc Staff xem xét.</p>
           </article>
@@ -307,13 +371,13 @@ onMounted(() => {
             <div class="summary-row"><span>Đền bù hư hỏng đề xuất</span><strong>− {{ money(damageFee) }}</strong></div>
             <div class="summary-row"><span>Phí trả muộn</span><strong>− {{ money(lateFee) }}</strong></div>
             <div class="refund-total"><span>Dự kiến hoàn cho bạn</span><strong>{{ money(expectedRefund) }}</strong></div>
-            <p class="small text-muted">Hoàn về VNPAY trong 1–3 ngày làm việc sau khi chốt số tiền.</p>
+            <p class="small text-muted">{{ refundMethod === 'VNPAY' ? 'Hoàn về VNPAY trong 1–3 ngày làm việc sau khi chốt số tiền.' : 'Hoàn ngay vào ví Clarity sau khi chốt số tiền.' }}</p>
             <div v-if="actionCompleted.refund" class="alert alert-success mt-3 mb-2"><i class="bi bi-check-circle-fill me-2"></i>{{ notice }}</div>
             <template v-if="!actionCompleted.refund">
               <button type="button" class="btn btn-primary w-100" @click="runAction('refund')">Đồng ý khấu trừ</button>
               <button type="button" class="btn btn-outline-danger w-100 mt-2" @click="router.push(isDemo ? `/customer/orders/${order.id}/complaint?demo=1` : `/customer/orders/${order.id}/complaint`)">Không đồng ý → Khiếu nại</button>
             </template>
-            <button v-else type="button" class="btn btn-outline-primary w-100 mt-2" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Xem tiến trình đơn</button>
+            <button v-else type="button" class="btn btn-primary w-100 mt-2" @click="router.push(isDemo ? `/customer/orders/${order.id}/review?demo=1` : `/customer/orders/${order.id}/review`)">Tiếp tục → Đánh giá</button>
           </article>
         </div>
       </section>
@@ -395,7 +459,7 @@ onMounted(() => {
             <small class="d-block text-muted mt-2">{{ evidenceFiles.length }} ảnh đã chọn · Hạn gửi trong 7 ngày kể từ khi đơn hoàn tất.</small>
             <div v-if="actionCompleted.review" class="alert alert-success mt-4 mb-2"><i class="bi bi-check-circle-fill me-2"></i>{{ notice }}</div>
             <button v-if="!actionCompleted.review" type="button" class="btn btn-primary mt-4" @click="runAction('review')">Gửi đánh giá</button>
-            <button v-else type="button" class="btn btn-outline-primary mt-3" @click="router.push(isDemo ? `/customer/orders/${order.id}?demo=1` : `/customer/orders/${order.id}`)">Quay lại đơn thuê</button>
+            <button v-else type="button" class="btn btn-primary mt-3" @click="router.push(isDemo ? '/customer/orders?demo=1' : '/customer/orders')">Xem tất cả đơn của tôi</button>
           </article>
         </div>
         <aside class="col-lg-5">
@@ -455,7 +519,15 @@ onMounted(() => {
         </aside>
       </section>
 
-      <section v-if="stage === 'pending'" class="detail-card mt-4"><h2 class="h5">Tiền thuê đang được Clarity giữ</h2><p class="mb-0">{{ money(rental) }} tiền thuê + {{ money(deposit) }} tiền cọc. Chủ đồ cần xác nhận trước hạn; nếu từ chối hoặc quá hạn, bạn được hoàn theo chính sách.</p><div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-outline-danger" @click="router.push(isDemo ? `/customer/orders/${order.id}/cancel?demo=1` : `/customer/orders/${order.id}/cancel`)">Hủy yêu cầu (miễn phí)</button><button type="button" class="btn btn-outline-primary">Chat với chủ đồ</button></div></section>
+      <section v-if="stage === 'pending'" class="detail-card mt-4">
+        <h2 class="h5">Tiền thuê đang được Clarity giữ</h2>
+        <p class="mb-0">{{ money(rental) }} tiền thuê + {{ money(deposit) }} tiền cọc. Chủ đồ cần xác nhận trước hạn; nếu từ chối hoặc quá hạn, bạn được hoàn theo chính sách.</p>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button v-if="isDemo" type="button" class="btn btn-primary" @click="router.push(isDemo ? `/customer/orders/${order.id}/receive?demo=1` : `/customer/orders/${order.id}/receive`)">Tiếp tục mô phỏng → Đi tới Nhận đồ</button>
+          <button type="button" class="btn btn-outline-danger" @click="router.push(isDemo ? `/customer/orders/${order.id}/cancel?demo=1` : `/customer/orders/${order.id}/cancel`)">Hủy yêu cầu (miễn phí)</button>
+          <button type="button" class="btn btn-outline-primary">Chat với chủ đồ</button>
+        </div>
+      </section>
       <section v-if="stage === 'tracking'" class="row g-4 mt-1"><section class="col-lg-8"><article class="detail-card"><h2 class="h5">Lịch sử đơn hàng</h2><div class="history-list"><div v-for="entry in history" :key="`${entry.toStatus}-${entry.changedAt}`" class="history-entry"><span class="history-dot" :class="entry.toStatus === 'COMPLETED' ? 'warning' : ''">{{ entry.toStatus === 'COMPLETED' ? '!' : '✓' }}</span><div><strong>{{ date(entry.changedAt, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }} · {{ statusLabels[entry.toStatus] || entry.toStatus }}</strong><small>{{ historyDescription(entry) }}</small></div></div></div><div v-if="isDisputed" class="alert alert-warning mt-3 mb-0">Đơn đang ở bước kiểm tra sau trả; tiền cọc được giữ đến khi có phán quyết.</div></article></section><aside class="col-lg-4"><article class="detail-card"><h2 class="h5">Thông tin đơn</h2><div class="summary-row"><span>Thời gian thuê</span><strong>{{ date(order?.orderItems?.[0]?.startDate) }}–{{ date(order?.orderItems?.[0]?.endDate) }}</strong></div><div class="summary-row"><span>Nhận đồ</span><strong>{{ order?.shippingProvider || 'Grab Express' }}</strong></div><div class="summary-row"><span>Tổng tiền</span><strong>{{ money(order?.totalAmount || 1500000) }}</strong></div><button type="button" class="btn btn-outline-primary w-100 mt-3" @click="router.push(isDemo ? `/customer/orders/${order.id}/receive?demo=1` : `/customer/orders/${order.id}/receive`)">Xem thao tác nhận / trả</button></article></aside></section>
     </div>
   </div></div>
