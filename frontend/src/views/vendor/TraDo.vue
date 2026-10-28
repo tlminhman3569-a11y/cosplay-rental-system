@@ -5,12 +5,12 @@ import ChipTag from '@/components/ChipTag.vue'
 import KpiRow from '@/components/KpiRow.vue'
 import TabsBar from '@/components/TabsBar.vue'
 import TimelineList from '@/components/TimelineList.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errCode, errMsg } from '@/services/http'
 import { RETURN_TABS, RETURN_FLOW } from '@/config/ownerUi'
 
+import { mockReturns, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const data = ref(null)
 const rows = ref([])
@@ -22,7 +22,7 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const d = await ownerService.returns()
+    const d = copyMock(mockReturns)
     data.value = d
     rows.value = d.rows.map((r) => ({ ...r, done: false, busy: false }))
   } catch (e) {
@@ -49,9 +49,9 @@ const flow = computed(() => RETURN_FLOW.map((x) => (x.title.startsWith('Kiểm t
 async function remind(r) {
   r.busy = true
   try {
-    await ownerService.remind(r.code)
+    // Chỉ đánh dấu trên giao diện minh họa.
     r.done = true
-    ui.toast(`Đã nhắc ${r.renter} trả đồ đúng hạn`)
+    ui.toast(`Minh họa nhắc ${r.renter} trả đồ đúng hạn`)
   } catch (e) {
     if (errCode(e) === 'already_reminded') r.done = true
     ui.toast(errMsg(e, 'Không gửi được lời nhắc'))
@@ -62,7 +62,7 @@ async function remind(r) {
 <template>
   <BoLayout role="owner" active="Theo dõi trả đồ" title="Theo dõi trả đồ" sub="Đơn sắp đến hạn, trả trễ và chờ kiểm tra sau trả">
     <div class="col">
-      <LoadState :loading="loading" :error="error" @retry="load(false)" />
+      <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
       <template v-if="data && !loading && !error">
       <KpiRow :items="kpis" />
       <TabsBar v-model="tab" :tabs="tabs" />

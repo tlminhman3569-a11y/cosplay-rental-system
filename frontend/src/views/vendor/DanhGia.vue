@@ -3,11 +3,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import BoLayout from '@/layouts/BoLayout.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import StarRating from '@/components/StarRating.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 
+import { mockReviews, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const data = ref(null)
 const loading = ref(true)
@@ -28,7 +28,7 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const d = await ownerService.reviews()
+    const d = copyMock(mockReviews)
     data.value = d
     reviews.value = d.received.map((r) => ({ ...r, editing: false, draft: '', busy: false }))
     if (idx.value >= d.toReview.length) idx.value = 0
@@ -56,9 +56,9 @@ async function submit() {
   if (!cur.value) return
   busy.value = true
   try {
-    await ownerService.reviewRenter(cur.value.orderCode, { criteria: criteria.map((c) => c.stars), comment: comment.value.trim() || undefined })
+    mockReviews.toReview = mockReviews.toReview.filter(x => x.orderCode !== cur.value.orderCode)
     submitted.value = true
-    ui.toast('Đã gửi đánh giá người thuê – hiển thị sau khi hai bên cùng gửi hoặc hết 7 ngày')
+    ui.toast('Đã lưu đánh giá minh họa trên trang')
     await load(true)
     submitted.value = false // đơn đã đánh giá rời khỏi danh sách chờ; form chuyển sang đơn kế tiếp (nếu có)
   } catch (e) { ui.toast(errMsg(e, 'Không gửi được đánh giá')) } finally { busy.value = false }
@@ -69,8 +69,8 @@ async function sendReply(r) {
   if (!r.draft.trim()) { ui.toast('Nhập nội dung phản hồi'); return }
   r.busy = true
   try {
-    await ownerService.replyReview(r.id, r.draft.trim())
-    ui.toast('Đã gửi phản hồi đánh giá')
+    mockReviews.received.find(x => x.id === r.id).reply = r.draft.trim()
+    ui.toast('Đã lưu phản hồi minh họa')
     await load(true)
   } catch (e) { ui.toast(errMsg(e, 'Không gửi được phản hồi')) } finally { r.busy = false }
 }
@@ -78,7 +78,7 @@ async function sendReply(r) {
 
 <template>
   <BoLayout role="owner" active="Đánh giá" title="Đánh giá hai chiều" sub="Đánh giá người thuê và phản hồi đánh giá về shop">
-    <LoadState :loading="loading" :error="error" @retry="load(false)" />
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
     <div v-if="data && !loading && !error" class="row as">
       <div class="col fl1">
         <div v-if="cur" class="card">

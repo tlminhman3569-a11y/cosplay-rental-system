@@ -5,9 +5,9 @@ import KpiRow from '@/components/KpiRow.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import RevenueBars from '@/components/owner/RevenueBars.vue'
 import OwnerCountdown from '@/components/owner/OwnerCountdown.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
 import { leftText } from '@/config/ownerUi'
 import { dm, vnd } from '@/utils/format'
@@ -21,7 +21,7 @@ const error = ref('')
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const [d, name] = await Promise.all([ownerService.dashboard(), ownerService.shopName()])
+    const [d, name] = await Promise.all([vendorService.dashboard(), vendorService.shopName()])
     data.value = d; shopName.value = name
   } catch (e) {
     error.value = errMsg(e, 'Không tải được tổng quan shop')
@@ -58,7 +58,7 @@ const shortLabel = (s) => String(s || '').split(' – ')[0]
               <ChipTag kind="a">Sắp hết hạn</ChipTag>
               <div class="fl1">
                 <b>{{ urgent.code }} {{ shortLabel(urgent.productLabel) }}… còn {{ leftText(urgent.secondsLeft) }} để xác nhận</b>
-                <div class="muted">{{ urgent.renter }} đã thanh toán, Clarity đang giữ tiền. Quá hạn sẽ hoàn 100% cho khách.</div>
+                <div class="muted">Yêu cầu của {{ urgent.renter }} cần được xác nhận hoặc từ chối tại mục Yêu cầu thuê.</div>
               </div>
             </div>
             <div class="mt12"><RouterLink class="btn s" :to="{ name: 'ChuYeuCau' }">Xem yêu cầu</RouterLink></div>
@@ -85,7 +85,7 @@ const shortLabel = (s) => String(s || '').split(' – ')[0]
                   <td>{{ r.productLabel }}</td>
                   <td>{{ r.renter }}</td>
                   <td>{{ dm(r.start) }} – {{ dm(r.end) }}</td>
-                  <td><ChipTag kind="g">Đã thanh toán – tiền do Clarity giữ</ChipTag></td>
+                  <td><ChipTag kind="a">Chờ shop xác nhận</ChipTag></td>
                   <td><b :style="r.urgent ? 'color:#B5432F' : ''">còn <OwnerCountdown :deadline="r.deadline" :seconds="r.secondsLeft" /></b></td>
                   <td><RouterLink class="btn s" :to="{ name: 'ChuYeuCau' }">Xem</RouterLink></td>
                 </tr>

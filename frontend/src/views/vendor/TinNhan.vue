@@ -1,17 +1,15 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import BoLayout from '@/layouts/BoLayout.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import ImgPh from '@/components/ImgPh.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 import AttachmentLink from '@/components/AttachmentLink.vue'
-import { uploadService, EVIDENCE_ACCEPT } from '@/services/uploadService'
 
-const POLL_MS = 5000
+import { mockConversations, mockMessages, mockConversationSummary, mockMeta, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const route = useRoute()
 const convs = ref([])
@@ -25,19 +23,16 @@ const keyword = ref('')
 const draft = ref('')
 const box = ref(null)
 const quickReplies = ref(['Đã nhận bằng chứng', 'Hướng dẫn cách giặt', 'Cảm ơn bạn đã thuê'])
-let timer = null
-let polling = false
 
 const active = computed(() => convs.value.find((c) => c.id === activeId.value) || null)
 const filtered = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   return k ? convs.value.filter((c) => (c.name + ' ' + (c.preview || '')).toLowerCase().includes(k)) : convs.value
 })
-const lastId = () => messages.value.reduce((m, x) => (x.id && x.id > m ? x.id : m), 0)
 function scrollDown() { nextTick(() => { if (box.value) box.value.scrollTop = box.value.scrollHeight }) }
 
 async function refreshList() {
-  const list = await ownerService.conversations()
+  const list = copyMock(mockConversations).map(c => ({...c, summary:c.order ? mockConversationSummary : null}))
   // giữ cuộc đang mở ở trạng thái đã đọc ngay trên giao diện
   convs.value = list.map((c) => (c.id === activeId.value ? { ...c, unread: 0 } : c))
 }
@@ -47,44 +42,21 @@ async function openConv(id) {
   opening.value = true
   activeId.value = id
   try {
-    const c = await ownerService.conversation(id)
+    const c = {...mockConversations.find(c => c.id === id), messages:copyMock(mockMessages)}
     if (activeId.value !== id) return
     messages.value = c.messages || []
     const row = convs.value.find((x) => x.id === id)
     if (row) row.unread = 0
     else convs.value = [{ ...c, unread: 0 }, ...convs.value]
     scrollDown()
-    startPolling()
   } catch (e) { ui.toast(errMsg(e, 'Không mở được cuộc trò chuyện')) } finally { opening.value = false }
 }
 function open(c) { if (c.id !== activeId.value) openConv(c.id) }
 
-// ----- polling 5 giây khi đang mở một hội thoại -----
-async function tick() {
-  const id = activeId.value
-  if (!id || polling) return
-  polling = true
-  try {
-    const fresh = await ownerService.newMessages(id, lastId())
-    if (id === activeId.value && Array.isArray(fresh) && fresh.length) {
-      const have = new Set(messages.value.map((m) => m.id).filter(Boolean))
-      const add = fresh.filter((m) => !m.id || !have.has(m.id))
-      if (add.length) {
-        messages.value = [...messages.value, ...add]
-        scrollDown()
-      }
-    }
-    await refreshList()
-  } catch { /* lỗi mạng tạm thời: thử lại ở lần polling sau */ } finally { polling = false }
-}
-function startPolling() { stopPolling(); timer = setInterval(tick, POLL_MS) }
-function stopPolling() { if (timer) { clearInterval(timer); timer = null } }
-onBeforeUnmount(stopPolling)
-
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const [list, meta] = await Promise.all([ownerService.conversations(), ownerService.meta().catch(() => null)])
+    const [list, meta] = await Promise.all([Promise.resolve(copyMock(mockConversations).map(c => ({...c, summary:c.order ? mockConversationSummary : null}))), Promise.resolve(mockMeta)])
     convs.value = list
     if (meta && meta.quickReplies && meta.quickReplies.length) quickReplies.value = meta.quickReplies
     let id = 0
@@ -94,7 +66,7 @@ async function load() {
       if (found) id = found.id
       else {
         try {
-          const created = await ownerService.openConversation({ orderCode })
+          const created = {...mockConversations[0],order:orderCode}
           convs.value = [created, ...list.filter((c) => c.id !== created.id)]
           id = created.id
         } catch (e) { ui.toast(errMsg(e, 'Không mở được hội thoại của đơn ' + orderCode)) }
@@ -116,7 +88,7 @@ async function openSupport() {
   let c = convs.value.find((x) => x.type === 'SUPPORT')
   if (!c) {
     try {
-      const created = await ownerService.openConversation({ support: true })
+      const created = mockConversations[2]
       convs.value = [created, ...convs.value.filter((x) => x.id !== created.id)]
       c = created
     } catch (e) { ui.toast(errMsg(e, 'Không mở được hội thoại hỗ trợ')); return }
@@ -129,7 +101,7 @@ async function send(attachmentUrl) {
   if (!t || !active.value || sending.value) return
   sending.value = true
   try {
-    const m = await ownerService.sendMessage(active.value.id, t, att || undefined)
+    const m = {id:Date.now(),type:'me',text:t,attachmentUrl:att || null}
     messages.value = [...messages.value, { ...m, type: 'me', text: m.text || t, attachmentUrl: m.attachmentUrl || att || null }]
     active.value.preview = 'Bạn: ' + t
     draft.value = ''
@@ -142,7 +114,7 @@ async function attach(pdf) {
   if (!active.value || sending.value || uploading.value) return
   uploading.value = true
   try {
-    const url = await uploadService.pickAndUpload(pdf ? { accept: EVIDENCE_ACCEPT, pdf: true, evidence: true } : {})
+    const url = ''; ui.toast('Tệp đính kèm chỉ minh họa trên trang này')
     uploading.value = false
     if (url) await send(url)
   } catch (e) { ui.toast(e.response ? errMsg(e, 'Không tải được tệp lên') : e.message || 'Không tải được tệp lên') } finally { uploading.value = false }
@@ -152,7 +124,7 @@ function quick(t) { draft.value = t }
 
 <template>
   <BoLayout role="owner" active="Tin nhắn" title="Tin nhắn">
-    <LoadState :loading="loading" :error="error" @retry="load" />
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load" />
     <div v-if="!loading && !error && !convs.length" class="card muted">Bạn chưa có cuộc trò chuyện nào. Tin nhắn với người thuê sẽ xuất hiện khi có đơn thuê.</div>
     <div v-if="!loading && !error && convs.length && active" class="row as" style="min-height:640px">
       <div class="card" style="width:250px;flex:none;padding:0;overflow:hidden;align-self:stretch">

@@ -19,3 +19,4 @@ backend/uploads/
 # OS metadata
 .DS_Store
 Thumbs.db
+/docs/reference-fe

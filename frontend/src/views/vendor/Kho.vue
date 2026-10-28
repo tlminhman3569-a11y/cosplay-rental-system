@@ -7,12 +7,12 @@ import TabsBar from '@/components/TabsBar.vue'
 import ImgPh from '@/components/ImgPh.vue'
 import ModalBox from '@/components/ModalBox.vue'
 import FormField from '@/components/FormField.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 import { INVENTORY_STATUS, INVENTORY_TABS, INVENTORY_NOTES } from '@/config/ownerUi'
 
+import { mockInventory, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const items = ref([])
 const shopName = ref('')
@@ -26,7 +26,7 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const [list, name] = await Promise.all([ownerService.inventory(), ownerService.shopName()])
+    const [list, name] = [copyMock(mockInventory), 'Mochi Cosplay']
     items.value = list; shopName.value = name
     if (!list.some((i) => i.id === selectedId.value)) selectedId.value = list.length ? list[0].id : 0
   } catch (e) {
@@ -70,9 +70,9 @@ function openEdit(it) {
 async function patch(it, body, okMsg) {
   saving.value = true
   try {
-    await ownerService.updateInventory(it.id, body)
+    Object.assign(mockInventory.find(x => x.id === it.id), body)
     showEdit.value = false
-    ui.toast(okMsg)
+    ui.toast('Minh họa: ' + okMsg)
     await load(true)
   } catch (e) { ui.toast(errMsg(e, 'Không cập nhật được kho hàng')) } finally { saving.value = false }
 }
@@ -98,7 +98,7 @@ function toWash() {
 <template>
   <BoLayout role="owner" active="Kho hàng" title="Kho hàng" sub="Theo dõi từng bộ đồ: tình trạng, phụ kiện, vị trí và lịch sử thuê">
     <template #actions><RouterLink class="btn" :to="{ name: 'ChuDangSP' }">+ Thêm bộ đồ vào kho</RouterLink></template>
-    <LoadState :loading="loading" :error="error" @retry="load(false)" />
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
     <div v-if="!loading && !error && !items.length" class="card muted">Kho chưa có bộ đồ nào. Hãy đăng sản phẩm đầu tiên của shop.</div>
     <div v-if="!loading && !error && selected" class="row as">
       <div class="col fl1">

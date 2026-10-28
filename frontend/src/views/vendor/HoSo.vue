@@ -5,12 +5,11 @@ import ChipTag from '@/components/ChipTag.vue'
 import FormField from '@/components/FormField.vue'
 import ImgPh from '@/components/ImgPh.vue'
 import StarRating from '@/components/StarRating.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
-import { uploadService } from '@/services/uploadService'
 
+import { mockShop, copyMock } from '../../../mock/vendor'
 const FIELDS = ['logoUrl', 'name', 'description', 'region', 'hours', 'ship', 'bank', 'cancelPolicy']
 const ui = useUiStore()
 const shop = ref(null)
@@ -25,7 +24,7 @@ async function changeLogo() {
   if (uploadingLogo.value) return
   uploadingLogo.value = true
   try {
-    const url = await uploadService.pickAndUpload()
+    const url = ''; ui.toast('Logo chỉ minh họa trên trang này')
     if (url) { form.logoUrl = url; logoBroken.value = false; ui.toast('Đã tải logo, bấm Lưu thay đổi để áp dụng') }
   } catch (e) { ui.toast(e.response ? errMsg(e, 'Không tải được logo') : e.message || 'Không tải được logo') } finally { uploadingLogo.value = false }
 }
@@ -39,7 +38,7 @@ function apply(sh) {
 }
 async function load() {
   loading.value = true; error.value = ''
-  try { apply(await ownerService.shop()) } catch (e) {
+  try { apply(copyMock(mockShop)) } catch (e) {
     error.value = errMsg(e, 'Không tải được hồ sơ shop')
     ui.toast(error.value)
   } finally { loading.value = false }
@@ -56,8 +55,8 @@ async function save() {
   saving.value = true
   try {
     const body = { logoUrl: form.logoUrl || '', name: form.name.trim(), description: form.description, region: form.region, hours: form.hours, ship: form.ship, cancelPolicy: form.cancelPolicy }
-    apply(await ownerService.updateShop(body))
-    ui.toast('Đã lưu hồ sơ shop')
+    apply(Object.assign(mockShop, body))
+    ui.toast('Đã lưu hồ sơ minh họa trên trang')
   } catch (e) { ui.toast(errMsg(e, 'Không lưu được hồ sơ shop')) } finally { saving.value = false }
 }
 function cancel() { FIELDS.forEach((k) => { form[k] = saved[k] }); ui.toast('Đã hủy thay đổi') }
@@ -65,7 +64,7 @@ function cancel() { FIELDS.forEach((k) => { form[k] = saved[k] }); ui.toast('Đ�
 
 <template>
   <BoLayout role="owner" active="Hồ sơ shop" title="Hồ sơ shop" sub="Xem trước hồ sơ công khai bên phải">
-    <LoadState :loading="loading" :error="error" @retry="load" />
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load" />
     <div v-if="shop && !loading && !error" class="row as">
       <div class="card fl1">
         <h3>Chỉnh sửa hồ sơ</h3>

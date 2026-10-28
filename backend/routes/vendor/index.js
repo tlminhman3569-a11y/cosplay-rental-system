@@ -5,6 +5,7 @@ import { ah, httpError } from '../../middlewares/error.js'
 import { DashboardController } from '../../controllers/vendor/dashboardController.js'
 import { StatsController } from '../../controllers/vendor/statsController.js'
 import { OrderController } from '../../controllers/vendor/orderController.js'
+import { MetaController } from '../../controllers/vendor/metaController.js'
 import productRoutes from './productRoutes.js'
 import orderRoutes from './orderRoutes.js'
 import requestRoutes from './requestRoutes.js'
@@ -22,6 +23,8 @@ router.use(ah(async (req, res, next) => {
   next()
 }))
 
+router.get('/meta', ah(MetaController.getMeta))
+router.get('/shop', ah(MetaController.getShop))
 router.get('/dashboard', ah(DashboardController.getDashboard))   // O01
 router.get('/stats', ah(StatsController.getStats))               // O16: biểu đồ cột + tròn
 router.get('/revenue', ah(OrderController.getRevenue))           // doanh thu

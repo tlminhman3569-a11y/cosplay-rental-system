@@ -7,12 +7,12 @@ import ChipTag from '@/components/ChipTag.vue'
 import ImgPh from '@/components/ImgPh.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import TimelineList from '@/components/TimelineList.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 import { vnd } from '@/utils/format'
 
+import { mockDisputes, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const route = useRoute()
 const list = ref([])
@@ -29,10 +29,10 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''; empty.value = false
   try {
-    list.value = await ownerService.disputes()
+    list.value = copyMock(mockDisputes)
     const code = String(route.query.code || '') || (list.value[0] ? list.value[0].code : '')
     if (!code) { d.value = null; empty.value = true; return }
-    d.value = await ownerService.dispute(code)
+    d.value = copyMock(mockDisputes.find(x => x.code === code) || mockDisputes[0])
   } catch (e) {
     const m = errMsg(e, 'Không tải được tranh chấp')
     if (silent && d.value) ui.toast(m); else { error.value = m; ui.toast(m) }
@@ -52,10 +52,10 @@ async function send() {
   if (!canSend.value) { ui.toast('Nhập phản hồi hoặc tải bằng chứng trước khi gửi'); return }
   sending.value = true
   try {
-    await ownerService.respondDispute(d.value.code, { note: reply.value.trim() || undefined, files: files.value.length ? files.value : undefined })
+    mockDisputes[0].log.push({state:'d',title:'Phản hồi minh họa của chủ shop',sub:reply.value.trim()})
     sent.value = true
     reply.value = ''; files.value = []
-    ui.toast('Đã gửi phản hồi cho Admin')
+    ui.toast('Đã lưu phản hồi minh họa trên trang')
     await load(true)
   } catch (e) { ui.toast(errMsg(e, 'Không gửi được phản hồi')) } finally { sending.value = false }
 }
@@ -64,7 +64,7 @@ async function send() {
 <template>
   <BoLayout role="owner" active="Tranh chấp" :title="'Tranh chấp ' + (d ? d.code : '')">
     <div class="col">
-      <LoadState :loading="loading" :error="error" @retry="load(false)" />
+      <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
       <div v-if="empty && !loading && !error" class="card muted">Shop chưa có tranh chấp nào.</div>
       <template v-if="d && v && !loading && !error">
         <div class="card">
@@ -111,10 +111,10 @@ async function send() {
           <div class="card fl1">
             <h3>Bổ sung bằng chứng / phản hồi ({{ v.respondHours }} giờ)</h3>
             <textarea v-model="reply" class="ta" style="min-height:70px" placeholder="Nhập phản hồi cho Admin…" :disabled="!d.canRespond"></textarea>
-            <div class="mt12"><ImageUploader v-model="files" :max="10" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" label="Tải ảnh bằng chứng" :h="70" :disabled="!d.canRespond" /></div>
+            <div class="mt12"><ImageUploader v-model="files" :max="10" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" label="Tải ảnh bằng chứng" :h="70" :disabled="true" /></div>
             <div class="mt12"><button type="button" class="btn" :class="{ dis: !canSend }" :disabled="sending || !d.canRespond" @click="send">Gửi phản hồi</button></div>
             <div v-if="!d.canRespond" class="muted sm mt8">Tranh chấp đã có phán quyết hoặc không còn nhận phản hồi.</div>
-            <div v-if="sent" class="muted sm mt8">Phản hồi của bạn đã được ghi vào nhật ký và gửi tới Admin.</div>
+            <div v-if="sent" class="muted sm mt8">Phản hồi minh họa đã được thêm vào nhật ký trên trang.</div>
           </div>
         </div>
 

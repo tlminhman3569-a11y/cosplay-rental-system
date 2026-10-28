@@ -5,12 +5,14 @@ import ChipTag from '@/components/ChipTag.vue'
 import ModalBox from '@/components/ModalBox.vue'
 import FormField from '@/components/FormField.vue'
 import RevenueBars from '@/components/owner/RevenueBars.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
 import { vnd } from '@/utils/format'
 
+import { mockWallet, mockMeta, copyMock } from '../../../mock/vendor'
+const totalRevenue = ref(null), revenueError = ref('')
 const ui = useUiStore()
 const w = ref(null)
 const loading = ref(true)
@@ -23,7 +25,8 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    w.value = await ownerService.wallet()
+    w.value = copyMock(mockWallet)
+    try { const revenue = await vendorService.revenue(); totalRevenue.value = revenue.totalRevenue; revenueError.value = '' } catch(e) { revenueError.value = errMsg(e, 'Không tải được doanh thu') }
     const accs = w.value.payoutAccounts || []
     if (!accs.some((a) => String(a.id) === String(accountId.value))) {
       const def = accs.find((a) => a.isDefault) || accs[0]
@@ -65,15 +68,15 @@ async function submit() {
   if (!canSubmit.value) { ui.toast(amountError.value || noticeText.value || 'Nhập số tiền rút hợp lệ'); return }
   busy.value = true
   try {
-    const r = await ownerService.withdraw(amount.value, Number(accountId.value))
+    const r = { approveHours: 24 }; mockWallet.available -= amount.value; mockWallet.pendingWithdrawTotal += amount.value; mockWallet.history.unshift({code:'DEMO-' + Date.now(),date:'25/10/2026',text:'Yêu cầu rút minh họa',amountText:'−' + vnd(amount.value),tone:'out',chip:['Chờ duyệt','a']})
     amountText.value = ''
-    ui.toast(`Đã gửi yêu cầu rút tiền – Admin duyệt trong ${r.approveHours || w.value.approveHours} giờ`)
+    ui.toast(`Minh họa yêu cầu rút tiền – thời gian duyệt ${r.approveHours || w.value.approveHours} giờ`)
     await load(true)
   } catch (e) { ui.toast(errMsg(e, 'Không gửi được yêu cầu rút tiền')) } finally { busy.value = false }
 }
 async function exportCsv() {
   try {
-    const blob = await ownerService.exportWalletCsv()
+    const blob = new Blob(['\ufeffMã GD,Ngày,Nội dung,Số tiền\n' + mockWallet.history.map(t => [t.code,t.date,t.text,t.amountText].join(',')).join('\n')], {type:'text/csv;charset=utf-8'})
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = 'lich-su-giao-dich.csv'
@@ -90,7 +93,7 @@ const nb = reactive({ bankName: 'Vietcombank', accountNumber: '', accountName: '
 const bankBusy = ref(false)
 async function manageBank() {
   showBank.value = true
-  try { const m = await ownerService.meta(); if (m.banks && m.banks.length) { banks.value = m.banks; nb.bankName = m.banks[0] } } catch { /* dùng danh sách mặc định */ }
+  try { const m = copyMock(mockMeta); if (m.banks && m.banks.length) { banks.value = m.banks; nb.bankName = m.banks[0] } } catch { /* dùng danh sách mặc định */ }
 }
 async function addBank() {
   const no = nb.accountNumber.replace(/\s/g, '')
@@ -98,7 +101,7 @@ async function addBank() {
   if (!nb.accountName.trim()) { ui.toast('Nhập tên chủ tài khoản'); return }
   bankBusy.value = true
   try {
-    await ownerService.addPayoutAccount({ bankName: nb.bankName, accountNumber: no, accountName: nb.accountName.trim().toUpperCase(), isDefault: nb.isDefault || !accounts.value.length })
+    mockWallet.payoutAccounts.push({id:Date.now(), bankName:nb.bankName,accountNumber:no,accountName:nb.accountName.trim(),isDefault:!mockWallet.payoutAccounts.length,label:nb.bankName + ' •••• ' + no.slice(-4)})
     nb.accountNumber = ''; nb.accountName = ''; nb.isDefault = false
     ui.toast('Đã thêm tài khoản nhận tiền')
     await load(true)
@@ -106,18 +109,18 @@ async function addBank() {
 }
 async function setDefault(a) {
   bankBusy.value = true
-  try { await ownerService.updatePayoutAccount(a.id, { isDefault: true }); ui.toast('Đã đặt làm tài khoản mặc định'); await load(true) } catch (e) { ui.toast(errMsg(e, 'Không đổi được tài khoản mặc định')) } finally { bankBusy.value = false }
+  try { mockWallet.payoutAccounts.forEach(x => {x.isDefault = x.id === a.id}); ui.toast('Đã đặt làm tài khoản mặc định'); await load(true) } catch (e) { ui.toast(errMsg(e, 'Không đổi được tài khoản mặc định')) } finally { bankBusy.value = false }
 }
 async function removeBank(a) {
   bankBusy.value = true
-  try { await ownerService.deletePayoutAccount(a.id); ui.toast('Đã xóa tài khoản'); await load(true) } catch (e) { ui.toast(errMsg(e, 'Không xóa được tài khoản')) } finally { bankBusy.value = false }
+  try { mockWallet.payoutAccounts = mockWallet.payoutAccounts.filter(x => x.id !== a.id); ui.toast('Đã xóa tài khoản'); await load(true) } catch (e) { ui.toast(errMsg(e, 'Không xóa được tài khoản')) } finally { bankBusy.value = false }
 }
 </script>
 
 <template>
   <BoLayout role="owner" active="Doanh thu & rút tiền" title="Doanh thu &amp; rút tiền">
-    <div class="col">
-      <LoadState :loading="loading" :error="error" @retry="load(false)" />
+    <div class="col"><div class="card"><h3>Tổng doanh thu thực nhận</h3><b v-if="totalRevenue !== null" style="font-size:26px">{{ vnd(totalRevenue) }}</b><div v-if="revenueError" class="err">{{ revenueError }}</div><div class="muted sm">Dữ liệu thật, chỉ gồm đơn hoàn tất. Các số dư và giao dịch bên dưới là minh họa.</div></div>
+      <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
       <template v-if="w && !loading && !error">
       <div class="row">
         <div class="card kpi"><div class="k">Khả dụng</div><div class="v">{{ vnd(available) }}</div><div class="d" style="color:#6F5F52">{{ vnd(w.pendingWithdrawTotal) }} đang chờ duyệt rút</div></div>

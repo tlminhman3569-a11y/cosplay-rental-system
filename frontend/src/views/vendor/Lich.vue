@@ -3,15 +3,15 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import BoLayout from '@/layouts/BoLayout.vue'
-import RentalCalendar from '@/components/RentalCalendar.vue'
+import RentalCalendar from '@/components/owner/RentalCalendar.vue'
 import KpiRow from '@/components/KpiRow.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import FormField from '@/components/FormField.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 
+import { mockCalendar, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
 const route = useRoute()
 const data = ref(null)
@@ -28,9 +28,9 @@ async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const res = await ownerService.calendar({ ...(sel.value ? { productId: sel.value } : {}), months: 3 })
+    const res = copyMock(mockCalendar)
     data.value = res
-    if (res.product) sel.value = res.product.id
+    if (!sel.value) sel.value = res.products[0].id
   } catch (e) {
     const m = errMsg(e, 'Không tải được lịch cho thuê')
     if (silent && data.value) ui.toast(m); else { error.value = m; ui.toast(m) }
@@ -106,7 +106,7 @@ async function addLock() {
   if (clash) { formError.value = 'Khoảng ngày này đã có đơn hoặc đã bị khóa/tạm giữ'; return }
   saving.value = true
   try {
-    await ownerService.addBlock(sel.value, { startDate: form.from, endDate: form.to, reason: form.reason.trim() || undefined })
+    mockCalendar.ranges.push({start:form.from,end:form.to,cls:'ow'}); mockCalendar.events.push({start:form.from,end:form.to,blockId:Date.now(),text:form.reason || 'Chủ đồ khóa',who:'Chủ shop',chip:['Đã khóa','n'],deletable:true})
     ui.toast(`Đã khóa ${fmtRange(form.from, form.to)} cho ${current.value.name}`)
     form.from = ''; form.to = ''; form.reason = ''
     selection.value = { start: null, end: null }
@@ -117,7 +117,7 @@ async function unlock(e) {
   if (!e.blockId) return
   saving.value = true
   try {
-    await ownerService.removeBlock(sel.value, e.blockId)
+    mockCalendar.events = mockCalendar.events.filter(x => x.blockId !== e.blockId); mockCalendar.ranges = mockCalendar.ranges.filter(x => !(x.cls === 'ow' && x.start === e.start && x.end === e.end))
     ui.toast(`Đã mở khóa ${fmtRange(e.start, e.end)} cho ${current.value.name}`)
     await load(true)
   } catch (err) { ui.toast(errMsg(err, 'Không mở khóa được')) } finally { saving.value = false }
@@ -127,18 +127,18 @@ function saveRules() { ui.toast('Quy tắc cho thuê do Admin cấu hình trong 
 </script>
 
 <template>
-  <BoLayout role="owner" active="Lịch cho thuê" title="Lịch cho thuê" sub="Lịch thời gian thực theo từng bộ đồ, đồng bộ với trang sản phẩm">
-    <LoadState :loading="loading" :error="error" @retry="load(false)" />
+  <BoLayout role="owner" active="Lịch cho thuê" title="Lịch cho thuê" sub="Lịch minh họa theo từng bộ đồ">
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load(false)" />
     <div v-if="data && !loading && !error && !products.length" class="card muted">Shop chưa có sản phẩm nào nên chưa có lịch cho thuê. Hãy đăng sản phẩm đầu tiên.</div>
     <div v-if="data && !loading && !error && products.length" class="row as">
       <div class="col fl1">
         <div class="card">
           <div class="row jb ac">
             <label class="lbl" style="margin:0">Chọn bộ đồ để xem và chỉnh lịch</label>
-            <ChipTag kind="g">Đồng bộ thời gian thực</ChipTag>
+            <ChipTag kind="g">Lịch minh họa</ChipTag>
           </div>
           <div class="mt8"><FormField :model-value="sel" type="select" :options="productOptions" @update:modelValue="pickProduct" /></div>
-          <div class="muted sm">Kho có {{ products.length }} bộ, mỗi bộ có lịch riêng. Thay đổi ở đây hiện ngay trên trang sản phẩm và ô chọn ngày của người thuê.</div>
+          <div class="muted sm">Kho có {{ products.length }} bộ, mỗi bộ có lịch riêng. Các thay đổi chỉ hiển thị trong bản minh họa này.</div>
           <div class="div"></div>
           <div class="row g8 wrap ac">
             <span class="sm muted">Chuyển nhanh:</span>

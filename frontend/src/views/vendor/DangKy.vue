@@ -6,21 +6,20 @@ import FormField from '@/components/FormField.vue'
 import StepperBar from '@/components/StepperBar.vue'
 import TimelineList from '@/components/TimelineList.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth'
-import { vendorService } from '@/services/vendorService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
 import { errMsg } from '@/services/http'
 import { REGISTER_ID_SLOTS, REGISTER_FLOW } from '@/config/vendorUi'
 
+import { mockMeta, copyMock } from '../../../mock/vendor'
 const ui = useUiStore()
-const auth = useAuthStore()
+const auth = {user:null}
 const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const submitting = ref(false)
 const meta = ref(null)
-const f = reactive({ shopName: '', area: '', intro: '', hours: '09:00 – 21:00', phone: '', bank: '', accountNo: '', accountName: '', idNumber: '' })
+const f = reactive({ shopName: 'Mochi Cosplay', area: 'TP. Hồ Chí Minh', intro: 'Trang phục và phụ kiện cosplay được chăm sóc kỹ.', hours: '09:00 – 21:00', phone: '0900000000', bank: 'Vietcombank', accountNo: '000000000000', accountName: 'CHU SHOP DEMO', idNumber: '000000000000' })
 const idSlots = ref(REGISTER_ID_SLOTS.map((label) => ({ label, imgs: [] })))
 const pledges = ref([])
 const flow = REGISTER_FLOW
@@ -29,7 +28,7 @@ const STEPS = ['Thông tin shop', 'Xác minh danh tính', 'Tài khoản nhận t
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const m = await ownerService.meta()
+    const m = copyMock(mockMeta)
     meta.value = m
     f.area = f.area || (m.areas || [])[0] || ''
     f.bank = f.bank || (m.banks || [])[0] || ''
@@ -85,10 +84,7 @@ async function submit() {
       accepted: true,
     }
     if (needsId.value) body.identity = { idNumber: f.idNumber.replace(/\s/g, ''), idFrontUrl: idSlots.value[0].imgs[0], idBackUrl: idSlots.value[1].imgs[0], selfieUrl: idSlots.value[2].imgs[0] }
-    const res = await ownerService.register(body)
-    auth.setSession({ token: res.token, user: res.user })
-    ui.toast(res.shop && res.shop.status === 'ACTIVE' ? 'Đã mở gian hàng – ' + (res.nextSteps || '') : 'Đã gửi hồ sơ xác minh – Staff xác minh trong 24 giờ')
-    router.push({ name: 'ChuTongQuan' })
+    ui.toast('Đã hoàn tất hồ sơ minh họa; không gửi thông tin xác minh lên hệ thống')
   } catch (e) { ui.toast(errMsg(e, 'Không gửi được hồ sơ, vui lòng thử lại')) } finally { submitting.value = false }
 }
 function saveDraft() { ui.toast('Chưa hỗ trợ lưu nháp hồ sơ – thông tin vẫn được giữ trên trang này cho tới khi bạn gửi hồ sơ') }
@@ -98,12 +94,12 @@ function saveDraft() { ui.toast('Chưa hỗ trợ lưu nháp hồ sơ – thông
   <PublicLayout>
     <div class="row jb ae mb16">
       <div>
-        <div class="crumb"><RouterLink :to="{ name: 'HoSo' }">Hồ sơ</RouterLink> › <b>Trở thành chủ đồ</b></div>
+        <div class="crumb"><RouterLink :to="{ name: 'ChuHoSo' }">Hồ sơ shop</RouterLink> › <b>Trở thành chủ đồ</b></div>
         <h1 class="h1" style="margin-bottom:4px">Đăng ký làm chủ đồ &amp; xác minh</h1>
         <div class="muted">Hoàn tất 4 bước để mở gian hàng cho thuê trên Clarity.</div>
       </div>
     </div>
-    <LoadState :loading="loading" :error="error" @retry="load" />
+    <div class="muted sm mb12">Dữ liệu minh họa · thao tác trên trang không ghi vào hệ thống.</div><LoadState :loading="loading" :error="error" @retry="load" />
     <template v-if="meta && !loading && !error">
     <div class="card" style="padding:16px 28px"><StepperBar :steps="steps" :current="current" /></div>
 
@@ -128,7 +124,7 @@ function saveDraft() { ui.toast('Chưa hỗ trợ lưu nháp hồ sơ – thông
             <FormField v-model="f.idNumber" label="Số CCCD" placeholder="9–12 chữ số" :error="f.idNumber && !idNumberOk ? 'Số CCCD gồm 9–12 chữ số' : ''" />
             <div class="row g12">
               <div v-for="s in idSlots" :key="s.label" class="fl1" style="min-width:0">
-                <ImageUploader v-model="s.imgs" :max="1" private :label="s.label" :h="120" />
+                <ImageUploader disabled v-model="s.imgs" :fixed="[{ url: '', label: s.label }]" :max="1" private :label="s.label" :h="120" />
               </div>
             </div>
           </template>

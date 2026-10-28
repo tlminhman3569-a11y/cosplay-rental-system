@@ -4,6 +4,14 @@ const WITH_IMAGES = { images: true }
 const WITH_ALL = { images: true, accessories: true, category: true, brand: true, series: true }
 
 export const ProductModel = {
+  // Danh mục dùng chung cho form vendor; chỉ hiển thị mục đang hoạt động.
+  formOptions: async () => {
+    const options = { where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }
+    const [categories, brands, series] = await Promise.all([
+      prisma.category.findMany(options), prisma.brand.findMany(options), prisma.series.findMany(options),
+    ])
+    return { categories, brands, series }
+  },
   list: (shopId, status) =>
     prisma.product.findMany({
       where: { shopId, ...(status ? { status } : {}) },

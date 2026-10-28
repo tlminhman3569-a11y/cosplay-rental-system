@@ -1,0 +1,21 @@
+[
+  {
+    "name": "other",
+    "files": [
+      "frontend/src/views/vendor/TinNhan.vue"
+    ]
+  },
+  {
+    "name": "system",
+    "files": [
+      "frontend/src/views/vendor/TinNhan.vue"
+    ]
+  },
+  {
+    "name": "vendor-area",
+    "files": [
+      "frontend/src/layouts/BoLayout.vue",
+      "frontend/src/components/ModalBox.vue"
+    ]
+  }
+]

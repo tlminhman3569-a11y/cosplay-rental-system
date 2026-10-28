@@ -3,12 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import BoLayout from '@/layouts/BoLayout.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import TabsBar from '@/components/TabsBar.vue'
-import ModalBox from '@/components/ModalBox.vue'
-import FormField from '@/components/FormField.vue'
 import OwnerCountdown from '@/components/owner/OwnerCountdown.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
 import { ORDER_TABS } from '@/config/ownerUi'
 import { dm, vnd } from '@/utils/format'
@@ -18,14 +16,13 @@ const rows = ref([])
 const shopName = ref('')
 const loading = ref(true)
 const error = ref('')
-const busyCode = ref('')
 const tab = ref('all')
 
 async function load(silent) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const [list, name] = await Promise.all([ownerService.orders({ group: 'all', limit: 200 }), ownerService.shopName()])
+    const [list, name] = await Promise.all([vendorService.orders({ group: 'all', limit: 200 }), vendorService.shopName()])
     rows.value = list; shopName.value = name
   } catch (e) {
     const m = errMsg(e, 'Không tải được danh sách đơn thuê')
@@ -46,29 +43,6 @@ const soonShip = computed(() => [...rows.value.filter((o) => ['CONFIRMED', 'READ
 const soonReturn = computed(() => [...rows.value.filter((o) => o.status === 'RENTING')].sort(byEnd)[0] || null)
 
 // Thao tác kế tiếp hợp lệ do server quyết định (nextAction)
-const trackModal = ref(false)
-const trackOrder = ref(null)
-const tracking = ref('')
-async function run(o, body) {
-  const na = o.nextAction
-  busyCode.value = o.code
-  try {
-    if (na.action === 'handover') await ownerService.handover(o.code, { type: na.type || 'PICKUP', photos: [] })
-    else await ownerService.orderAction(o.code, na.action, body || {})
-    trackModal.value = false
-    ui.toast(`${o.code} chuyển sang "${o.nextLabel || na.label}"`)
-    await load(true)
-  } catch (e) { ui.toast(errMsg(e, 'Không cập nhật được đơn')) } finally { busyCode.value = '' }
-}
-function advance(o) {
-  if (!o.nextAction) return
-  if (o.nextAction.needsTracking) { trackOrder.value = o; tracking.value = ''; trackModal.value = true; return }
-  run(o)
-}
-function confirmTracking() {
-  if (!tracking.value.trim()) { ui.toast('Nhập mã vận đơn trước khi giao'); return }
-  run(trackOrder.value, { trackingCode: tracking.value.trim() })
-}
 </script>
 
 <template>
@@ -95,8 +69,7 @@ function confirmTracking() {
               </td>
               <td>
                 <RouterLink class="btn s o" :to="{ name: 'ChuDonChiTiet', query: { code: o.code } }">Chi tiết</RouterLink>
-                <div v-if="o.nextAction" class="mt8"><button type="button" class="btn s" :disabled="busyCode === o.code" @click="advance(o)">{{ o.next || o.nextAction.label }}</button></div>
-                <div v-else-if="o.group === 'pending'" class="mt8"><RouterLink class="btn s" :to="{ name: 'ChuYeuCau' }">Xử lý yêu cầu</RouterLink></div>
+                <div v-if="o.group === 'pending'" class="mt8"><RouterLink class="btn s" :to="{ name: 'ChuYeuCau' }">Xử lý yêu cầu</RouterLink></div>
               </td>
             </tr>
             <tr v-if="!shown.length"><td colspan="8" class="muted">Không có đơn nào trong mục này.</td></tr>
@@ -124,15 +97,8 @@ function confirmTracking() {
           <div v-if="soonReturn" class="mt12"><RouterLink class="btn s o" :to="{ name: 'ChuTinNhan', query: { order: soonReturn.code } }">Nhắn khách</RouterLink></div>
         </div>
       </div>
-      <div class="muted sm">Tổng nhận = tiền thuê chủ đồ nhận (đã trừ phí nền tảng 7%). Tiền được nhả sau khi đơn Hoàn tất; đơn chờ xác nhận xử lý ở mục Yêu cầu thuê.</div>
+      <div class="muted sm">Tổng nhận = tiền thuê − phí nền tảng của từng đơn. Chỉ đơn hoàn tất được tính vào doanh thu; đơn chờ xác nhận xử lý ở mục Yêu cầu thuê.</div>
       </template>
     </div>
-    <ModalBox v-model="trackModal" title="Giao đồ cho đơn vị vận chuyển">
-      <FormField v-model="tracking" label="Mã vận đơn" placeholder="Ví dụ: GRAB-7742-HN0210" />
-      <template #footer>
-        <button type="button" class="btn o" @click="trackModal = false">Hủy</button>
-        <button type="button" class="btn" :disabled="!!busyCode" @click="confirmTracking">Xác nhận giao</button>
-      </template>
-    </ModalBox>
   </BoLayout>
 </template>

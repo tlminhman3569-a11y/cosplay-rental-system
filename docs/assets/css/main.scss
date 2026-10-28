@@ -1,0 +1,33 @@
+@import 'tokens';
+// Ghi đè biến Bootstrap trước khi import
+$primary: $brand;
+$secondary: $muted;
+$warning: $gold;
+$body-bg: $bg;
+$body-color: $ink;
+$font-family-sans-serif: $font-body;
+$line-height-base: 1.35;
+$border-radius: .625rem;
+$input-border-color: $input-line;
+$input-focus-border-color: $brand;
+$input-focus-box-shadow: 0 0 0 .2rem rgba($brand, .15);
+$enable-shadows: false;
+
+// Chỉ nạp các phần Bootstrap KHÔNG đụng class của wireframe.
+// Cố ý bỏ: grid (.row/.col), buttons (.btn), card, modal, nav, tables, forms, type (.h1)
+// vì bộ class wireframe (_components.scss) đã định nghĩa riêng các tên đó.
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/images';
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/helpers';
+@import 'bootstrap/scss/utilities/api';
+
+@import 'components';
+@import 'app';

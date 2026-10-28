@@ -6,17 +6,17 @@ import KpiRow from '@/components/KpiRow.vue'
 import FormField from '@/components/FormField.vue'
 import BarChart from '@/components/owner/BarChart.vue'
 import DonutChart from '@/components/owner/DonutChart.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
-import { vnd } from '@/utils/format'
+import { vnd, iso } from '@/utils/format'
 import { STATS_RANGES } from '@/config/ownerUi'
 
 const ui = useUiStore()
 const range = ref('month')
-const todayIso = dayjs().format('YYYY-MM-DD')
-const from = ref(dayjs().startOf('month').format('YYYY-MM-DD'))
+const todayIso = iso(new Date())
+const from = ref(todayIso.slice(0, 7) + '-01')
 const to = ref(todayIso)
 const data = ref(null)
 const loading = ref(true)
@@ -29,7 +29,7 @@ async function load(key, params) {
   if (data.value) refreshing.value = true; else loading.value = true
   error.value = ''
   try {
-    const res = await ownerService.stats({ range: key, ...(params || {}) })
+    const res = await vendorService.stats({ range: key, ...(params || {}) })
     if (my !== seq) return
     data.value = res
     range.value = key
@@ -95,14 +95,14 @@ function exportPdf() { ui.toast('Xuất PDF chưa được hỗ trợ trên bả
             <div style="align-self:flex-end;margin-bottom:19px"><button type="button" class="btn s" @click="applyCustom">Áp dụng</button></div>
           </div>
         </div>
-        <div class="muted sm">Kỳ đang xem: {{ data.label }}<template v-if="refreshing"> · đang cập nhật…</template></div>
+        <div class="muted sm">Kỳ đang xem: {{ data.label }}<template v-if="refreshing"> · đang tải dữ liệu…</template></div>
       </div>
 
       <KpiRow :items="kpis" />
 
       <div class="row as">
         <div class="card fl1" style="flex:1.2 1 0;min-width:0">
-          <h3>Doanh thu theo tuần (biểu đồ cột)</h3>
+          <h3>Doanh thu trong kỳ (biểu đồ cột)</h3>
           <BarChart :bars="bars" />
           <div class="muted sm mt8">Tổng kỳ: {{ vnd(total) }} · đơn vị đồng · khoảng ngày thay đổi theo bộ lọc phía trên</div>
         </div>

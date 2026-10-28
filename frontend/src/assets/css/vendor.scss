@@ -1,0 +1,16 @@
+@use './vendor-reference/tokens' as *;
+
+// Chỉ nhập tại BoLayout. Không nạp lại Bootstrap của bản tham khảo.
+// Các selector html/body/#app/:root đã được chuyển thành gốc vendor.
+.vendor-area {
+  @import './vendor-reference/components';
+  @import './vendor-reference/app';
+
+  // Chỉ khử thuộc tính Bootstrap xung đột; không tạo class giao diện mới.
+  .row { --bs-gutter-x: 0; --bs-gutter-y: 0; margin: 0; }
+  .row > * { width: auto; max-width: 100%; margin-top: 0; }
+  .row:not(.wrap) { flex-wrap: nowrap; }
+  .col { flex: initial; }
+  .card { display: block; color: inherit; }
+  .modal { display: block; position: relative; inset: auto; height: auto; z-index: auto; }
+}

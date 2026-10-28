@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { prisma } from '../config/db.js'
+import { prisma } from '../config/prisma.js'
 import { httpError } from './error.js'
 
 export const authRequired = async (req, res, next) => {

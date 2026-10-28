@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vendor API Tester</title>
+    <style>
+        :root{--bg:#f6f4f1;--card:#fff;--ink:#2b2622;--muted:#8a8178;--line:#e4ded7;--brand:#6b4630;--ok:#2f6b4a;--bad:#b5432f;--warn:#e0a93b;--blue:#4a6f98}
+        @media (prefers-color-scheme:dark){:root{--bg:#1c1a18;--card:#26231f;--ink:#efe9e2;--muted:#a39a90;--line:#3b362f;--brand:#d3a57f;--ok:#6cc08f;--bad:#f08a76;--warn:#e8bd5c;--blue:#8fb3d9}}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+        header.top{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:5}
+        h1{font-size:17px;margin:0 0 8px;color:var(--brand)}
+        h3{margin:18px 0 8px;font-size:14px}
+        .cfg{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+        .cfg label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:2px}
+        input,select,textarea,button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+        textarea{width:100%;min-height:64px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+        button{cursor:pointer;background:var(--brand);color:#fff;border-color:var(--brand)}
+        button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+        button.danger{background:var(--bad);border-color:var(--bad)}
+        button.sm{padding:3px 8px;font-size:12px}
+        button:disabled{opacity:.5;cursor:default}
+        #base{width:300px}#token{width:260px}
+        details.login{margin-top:8px;font-size:13px}
+        details.login .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+        nav{display:flex;gap:4px;padding:10px 16px 0;flex-wrap:wrap}
+        nav button{background:transparent;color:var(--muted);border:1px solid var(--line);border-bottom:none;border-radius:6px 6px 0 0}
+        nav button.on{background:var(--card);color:var(--brand);font-weight:600}
+        main{background:var(--card);margin:0 16px;border:1px solid var(--line);border-radius:0 6px 6px 6px;padding:16px;min-height:280px}
+        section{display:none}section.on{display:block}
+        .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+        .grid label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:2px}
+        .grid .wide{grid-column:1/-1}
+        .card{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+        .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
+        .kpi{border:1px solid var(--line);border-radius:8px;padding:8px 10px}.kpi b{display:block;font-size:18px}.kpi span{font-size:12px;color:var(--muted)}
+        table{border-collapse:collapse;width:100%;font-size:13px}
+        th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:500;font-size:12px}
+        .tw{overflow-x:auto}
+        tr.click{cursor:pointer}tr.click:hover{background:var(--bg)}
+        .muted{color:var(--muted)}.err{color:var(--bad)}.okc{color:var(--ok)}
+        .box{border-radius:6px;padding:8px 10px;margin:8px 0;font-size:13px}
+        .box.err{background:color-mix(in srgb,var(--bad) 14%,transparent);border:1px solid var(--bad)}
+        .box.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);border:1px solid var(--warn)}
+        .box.ok{background:color-mix(in srgb,var(--ok) 14%,transparent);border:1px solid var(--ok)}
+        .chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line)}
+        .chip.g{color:var(--ok);border-color:var(--ok)}.chip.a{color:var(--warn);border-color:var(--warn)}.chip.b{color:var(--blue);border-color:var(--blue)}.chip.r{color:var(--bad);border-color:var(--bad)}.chip.n{color:var(--muted)}
+        .pill{font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted)}.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+        pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;max-height:340px;font-size:12px;margin:6px 0}
+        .bars{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:18px;overflow-x:auto}
+        .bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:34px;flex:1}
+        .bar i{display:block;width:70%;min-height:2px;background:var(--brand);border-radius:3px 3px 0 0}.bar b{font-size:10px;font-weight:500}.bar span{font-size:10px;color:var(--muted);white-space:nowrap}
+        .pies{display:flex;flex-wrap:wrap;gap:24px}.pie{display:flex;gap:12px;align-items:center}
+        .pie .disc{width:110px;height:110px;border-radius:50%;flex:none}
+        .legend div{font-size:12px;display:flex;gap:6px;align-items:center}.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+        img.th{width:36px;height:46px;object-fit:cover;border-radius:4px;background:var(--bg)}
+        #log{margin:16px;font-size:12px}#log summary{cursor:pointer;color:var(--muted)}
+        .logrow{display:grid;grid-template-columns:70px 54px 1fr 50px 60px;gap:6px;padding:3px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+    </style>
+</head>
+<body>
+<header class="top">
+    <h1>Vendor API Tester <span class="muted" style="font-weight:400;font-size:12px">— công cụ thử back-end khu Chủ cho thuê</span></h1>
+    <div class="cfg">
+        <label>API base <input id="base"></label>
+        <label>JWT token (role VENDOR) <input id="token" type="password" placeholder="dán token vào đây" autocomplete="off"></label>
+        <button id="btn-save">Lưu</button>
+        <span id="who" class="pill">chưa có token</span>
+    </div>
+    <details class="login"><summary>Chưa có token? Đăng nhập để lấy</summary>
+        <div class="row">
+            <input id="login-path" value="/api/auth/login" size="22" title="Đường dẫn API đăng nhập của Mẫn (sửa cho đúng)">
+            <input id="login-email" placeholder="email">
+            <input id="login-pass" type="password" placeholder="mật khẩu">
+            <button id="btn-login" class="sm">Đăng nhập</button><span id="login-msg" class="muted"></span>
+        </div>
+    </details>
+</header>
+
+<nav id="tabs">
+    <button data-tab="smoke" class="on">Kiểm tra nhanh</button>
+    <button data-tab="dash">Tổng quan</button>
+    <button data-tab="prod">Sản phẩm</button>
+    <button data-tab="ord">Đơn &amp; Yêu cầu</button>
+    <button data-tab="stat">Doanh thu &amp; Thống kê</button>
+    <button data-tab="con">Gọi tự do</button>
+</nav>
+
+<main>
+    <section id="tab-smoke" class="on">
+        <p class="muted">Chạy một loạt lời gọi <b>chỉ đọc</b> (không sửa dữ liệu) để xem API có sống và đúng định dạng không.</p>
+        <div class="row"><button id="btn-smoke">▶ Chạy kiểm tra nhanh</button><span id="smoke-sum"></span></div>
+        <div class="tw"><table id="smoke-tbl"><thead><tr><th></th><th>Kiểm tra</th><th>Yêu cầu</th><th>Mong đợi</th><th>Thực tế</th><th>ms</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-dash">
+        <div class="row"><button id="btn-dash">Tải dashboard (O01)</button></div>
+        <div id="out-dash"></div>
+    </section>
+
+    <section id="tab-prod">
+        <div class="row">
+            <select id="p-filter"><option>ALL</option><option>PENDING</option><option>ACTIVE</option><option>REJECTED</option><option>HIDDEN</option></select>
+            <button id="btn-plist">Tải danh sách (O02)</button><button id="btn-meta" class="ghost">Tải dropdown (/meta)</button>
+        </div>
+        <div id="out-plist"></div>
+        <div class="card">
+            <h3 style="margin-top:0">Thêm / Sửa sản phẩm (O03) <span id="p-editing" class="muted"></span></h3>
+            <input type="hidden" id="p-id">
+            <div class="grid">
+                <label class="wide">Tên sản phẩm *<input id="p-name"></label>
+                <label>Danh mục *<select id="p-cat"><option value="">— bấm “Tải dropdown” —</option></select></label>
+                <label>Thương hiệu<select id="p-brand"><option value="">—</option></select></label>
+                <label>Series<select id="p-series"><option value="">—</option></select></label>
+                <label>Nhân vật<input id="p-char"></label>
+                <label>Loại<select id="p-type"><option value="COSTUME">COSTUME</option><option value="ACCESSORY">ACCESSORY</option></select></label>
+                <label>Giới tính<select id="p-gender"><option>UNISEX</option><option>FEMALE</option><option>MALE</option></select></label>
+                <label>Size<input id="p-size" placeholder="M"></label>
+                <label>Độ khó<select id="p-diff"><option value="">—</option><option>EASY</option><option>MEDIUM</option><option>HARD</option></select></label>
+                <label>Tình trạng<select id="p-cond"><option value="">—</option><option>NEW</option><option>LIKE_NEW</option><option>GOOD</option><option>FAIR</option></select></label>
+                <label>Giá thuê / ngày *<input id="p-price" type="number"></label>
+                <label>Tiền cọc *<input id="p-deposit" type="number"></label>
+                <label>Giá trị đồ<input id="p-value" type="number"></label>
+                <label>Số lượng<input id="p-qty" type="number" value="1"></label>
+                <label>Thuê tối thiểu (ngày)<input id="p-min" type="number" value="1"></label>
+                <label>Thuê tối đa (ngày)<input id="p-max" type="number" value="7"></label>
+                <label>Ngày giặt/bảo trì<input id="p-clean" type="number" value="1"></label>
+                <label class="wide">Mô tả<textarea id="p-desc"></textarea></label>
+                <label class="wide">Hướng dẫn giặt<input id="p-care"></label>
+                <label class="wide">Ảnh (mỗi dòng 1 URL, dòng đầu là ảnh bìa)<textarea id="p-images"></textarea></label>
+                <label class="wide">Phụ kiện (mỗi dòng: LOẠI | Tên | yes/no bắt buộc) — LOẠI: WIG, SHOES, PROPS, OTHER<textarea id="p-acc" placeholder="WIG | Tóc tím | no"></textarea></label>
+            </div>
+            <div class="row" style="margin-top:10px">
+                <button id="btn-pcreate">POST – Tạo mới</button><button id="btn-pupdate" class="ghost">PUT – Cập nhật theo ID</button>
+                <button id="btn-psample" class="ghost">Điền dữ liệu mẫu</button><button id="btn-pclear" class="ghost">Xóa form</button>
+            </div>
+            <div id="out-pform"></div>
+        </div>
+    </section>
+
+    <section id="tab-ord">
+        <h3 style="margin-top:0">Yêu cầu thuê chờ xác nhận (O06 · Tự chọn 2)</h3>
+        <div class="row"><button id="btn-req">Tải yêu cầu</button></div>
+        <div id="out-req"></div>
+        <h3>Danh sách đơn (O07)</h3>
+        <div class="row">
+            <select id="o-group"><option value="all">all</option><option>pending</option><option>ship</option><option>rent</option><option>check</option><option>done</option><option>cancel</option></select>
+            <button id="btn-olist">Tải đơn</button><span class="muted">bấm vào một dòng để xem chi tiết (O08)</span>
+        </div>
+        <div id="out-olist"></div><div id="out-odetail"></div>
+    </section>
+
+    <section id="tab-stat">
+        <div class="row"><button id="btn-rev">Tải doanh thu</button></div>
+        <div id="out-rev"></div>
+        <h3>Thống kê (O16)</h3>
+        <div class="row">
+            <select id="s-range"><option value="d7">7 ngày</option><option value="d30" selected>30 ngày</option><option value="month">Tháng này</option><option value="quarter">Quý này</option><option value="custom">Tùy chọn</option></select>
+            <input id="s-from" type="date" disabled><input id="s-to" type="date" disabled>
+            <button id="btn-stats">Tải thống kê</button>
+        </div>
+        <div id="out-stats"></div>
+    </section>
+
+    <section id="tab-con">
+        <div class="row">
+            <select id="c-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+            <input id="c-path" value="/meta" style="flex:1;min-width:220px" placeholder="/products?status=ACTIVE">
+            <label style="font-size:12px"><input id="c-noauth" type="checkbox"> không gửi token</label>
+            <button id="btn-send">Gửi</button>
+        </div>
+        <textarea id="c-body" placeholder='Body JSON (cho POST / PUT / PATCH), ví dụ: {"reason":"Hết hàng"}'></textarea>
+        <div id="out-con"></div>
+    </section>
+</main>
+
+<details id="log"><summary>Nhật ký request (<span id="log-n">0</span>) — bấm một dòng để xem phản hồi</summary><div id="log-rows"></div><pre id="log-body" hidden></pre></details>
+
+<script>
+    'use strict'
+    const $ = (s) => document.querySelector(s)
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const vnd = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ'
+    const when = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—')
+    const day = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—')
+    const hex = (c) => (/^#[0-9a-f]{3,8}$/i.test(c) ? c : '#999')
+    const store = { get: (k) => { try { return localStorage.getItem(k) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch { /* bỏ qua */ } } }
+    const secText = (s) => (s <= 0 ? 'đã quá hạn' : s >= 3600 ? 'còn ' + Math.floor(s / 3600) + ' giờ' : 'còn ' + Math.ceil(s / 60) + ' phút')
+
+    // ---------- cấu hình ----------
+    const isHttp = location.protocol.startsWith('http')
+    $('#base').value = store.get('vt_base') || (isHttp ? location.origin + '/api/vendor' : 'http://localhost:5000/api/vendor')
+    $('#token').value = store.get('vt_token') || ''
+    const token = () => $('#token').value.trim()
+
+    function decodeJwt(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))) } catch { return null } }
+    function refreshWho() {
+        const w = $('#who'), t = token()
+        if (!t) { w.className = 'pill'; w.textContent = 'chưa có token'; return }
+        const p = decodeJwt(t)
+        if (!p) { w.className = 'pill bad'; w.textContent = 'token không phải JWT'; return }
+        const exp = p.exp ? p.exp * 1000 : null
+        if (exp && exp < Date.now()) { w.className = 'pill bad'; w.textContent = 'token đã hết hạn ' + when(exp); return }
+        w.className = 'pill ok'; w.textContent = 'userId ' + String(p.userId || p.id || p.sub || '?').slice(-6) + (exp ? ' · hết hạn ' + when(exp) : '')
+    }
+    $('#btn-save').onclick = () => { store.set('vt_base', $('#base').value.trim()); store.set('vt_token', token()); refreshWho() }
+    $('#token').oninput = refreshWho
+
+    function findToken(o, depth = 0) {
+        if (!o || typeof o !== 'object' || depth > 3) return null
+        for (const k of ['token', 'accessToken', 'access_token', 'jwt']) if (typeof o[k] === 'string') return o[k]
+        for (const v of Object.values(o)) { const t = findToken(v, depth + 1); if (t) return t }
+        return null
+    }
+    $('#btn-login').onclick = async () => {
+        const msg = $('#login-msg'); msg.className = 'muted'; msg.textContent = 'Đang đăng nhập…'
+        try {
+            const url = new URL($('#base').value.trim(), location.href).origin + $('#login-path').value.trim()
+            const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('#login-email').value.trim(), password: $('#login-pass').value }) })
+            const j = await r.json().catch(() => null)
+            const t = findToken(j)
+            if (!r.ok || !t) throw new Error((j && j.message) || 'Không tìm thấy token trong phản hồi (HTTP ' + r.status + ')')
+            $('#token').value = t; $('#btn-save').click(); msg.className = 'okc'; msg.textContent = 'Đã lấy token'
+        } catch (e) { msg.className = 'err'; msg.textContent = e.message }
+    }
+
+    // ---------- gọi API + nhật ký ----------
+    const logs = []
+    function addLog(e) {
+        logs.unshift(e); if (logs.length > 40) logs.pop()
+        $('#log-n').textContent = logs.length
+        $('#log-rows').innerHTML = logs.map((l, i) => `<div class="logrow" data-i="${i}"><span class="muted">${esc(l.t)}</span><b>${esc(l.m)}</b><span>${esc(l.p)}</span><span class="${l.s >= 400 || l.s === 'ERR' ? 'err' : 'okc'}">${esc(l.s)}</span><span class="muted">${esc(l.ms)}ms</span></div>`).join('')
+    }
+    $('#log-rows').onclick = (ev) => {
+        const row = ev.target.closest('.logrow'); if (!row) return
+        const b = $('#log-body'); b.hidden = false; b.textContent = logs[+row.dataset.i].body
+    }
+    async function api(method, path, body, opts = {}) {
+        const url = $('#base').value.trim().replace(/\/+$/, '') + path
+        const t0 = performance.now()
+        const headers = { 'Content-Type': 'application/json' }
+        if (token() && !opts.noAuth) headers.Authorization = 'Bearer ' + token()
+        let res, text
+        try {
+            res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
+            text = await res.text()
+        } catch (e) {
+            addLog({ t: new Date().toLocaleTimeString('vi-VN'), m: method, p: path, s: 'ERR', ms: Math.round(performance.now() - t0), body: String(e) })
+            const hint = isHttp ? 'Server chưa chạy hoặc sai cổng?' : 'Server chưa chạy / sai cổng / chưa bật CORS (trang đang mở từ file://).'
+            throw Object.assign(new Error('Không kết nối được tới ' + url + '. ' + hint), { status: 0 })
+        }
+        let data = null; try { data = text ? JSON.parse(text) : null } catch { data = text }
+        addLog({ t: new Date().toLocaleTimeString('vi-VN'), m: method, p: path, s: res.status, ms: Math.round(performance.now() - t0), body: text.slice(0, 20000) })
+        const out = { ok: res.ok, status: res.status, data, ms: Math.round(performance.now() - t0) }
+        if (!res.ok && !opts.soft) throw Object.assign(new Error((data && data.message) || 'HTTP ' + res.status), { status: res.status, data })
+        return opts.soft ? out : data
+    }
+    // chạy một thao tác, hiển thị trạng thái/ lỗi vào ô kết quả
+    async function run(sel, fn) {
+        const el = $(sel); el.innerHTML = '<p class="muted">Đang tải…</p>'
+        try { el.innerHTML = await fn() } catch (e) { el.innerHTML = `<div class="box err"><b>${esc(e.status ? 'HTTP ' + e.status : 'Lỗi')}</b> — ${esc(e.message)}${e.data && e.data.error ? ` <span class="muted">(${esc(e.data.error)})</span>` : ''}</div>` }
+    }
+    const okBox = (msg) => `<div class="box ok">${esc(msg)}</div>`
+
+    // ---------- tab ----------
+    document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => {
+        document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b))
+        document.querySelectorAll('main > section').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab))
+    }))
+
+    // ---------- hiển thị ----------
+    const chip = (label, kind) => `<span class="chip ${esc(kind || 'n')}">${esc(label)}</span>`
+    const kpi = (label, value, sub) => `<div class="kpi"><span>${esc(label)}</span><b>${esc(value)}</b><span>${esc(sub || '')}</span></div>`
+    function bars(items) {
+        const max = Math.max(...items.map((i) => i.value), 1)
+        return `<div class="bars">${items.map((i) => `<div class="bar" title="${esc(i.label)}: ${esc(i.text)}"><b>${esc(i.text)}</b><i style="height:${Math.max(1, (i.value / max) * 100)}%"></i><span>${esc(i.label)}</span></div>`).join('')}</div>`
+    }
+    function pie(title, slices) {
+        const total = slices.reduce((s, x) => s + x.value, 0)
+        if (!total) return `<div><b>${esc(title)}</b><p class="muted">Chưa có dữ liệu</p></div>`
+        let acc = 0
+        const stops = slices.filter((s) => s.value > 0).map((s) => { const a = (acc / total) * 100; acc += s.value; return `${hex(s.color)} ${a}% ${(acc / total) * 100}%` }).join(',')
+        return `<div><b>${esc(title)}</b><div class="pie"><div class="disc" style="background:conic-gradient(${stops})"></div><div class="legend">${slices.map((s) => `<div><i style="background:${hex(s.color)}"></i>${esc(s.label)} — ${esc(s.value.toLocaleString('vi-VN'))}</div>`).join('')}</div></div></div>`
+    }
+
+    // ---------- kiểm tra nhanh ----------
+    const ZERO = '000000000000000000000000'
+    const SMOKE = [
+        { name: 'Không token → bị chặn', path: '/dashboard', noAuth: true, expect: [401] },
+        { name: 'Tên gian hàng', path: '/shop', check: (d) => typeof d.name === 'string' },
+        { name: 'Dropdown /meta', path: '/meta', check: (d) => Array.isArray(d.productForm && d.productForm.categories) && Array.isArray(d.rejectReasons) },
+        { name: 'Dashboard (O01)', path: '/dashboard', check: (d) => d.kpis && Array.isArray(d.revenue6m) && Array.isArray(d.pendingRequests) },
+        { name: 'Danh sách sản phẩm (O02)', path: '/products', check: Array.isArray },
+        { name: 'Lọc status sai → 400', path: '/products?status=XYZ', expect: [400] },
+        { name: 'Id sai định dạng → 400', path: '/products/xyz', expect: [400] },
+        { name: 'Sản phẩm không tồn tại → 404', path: '/products/' + ZERO, expect: [404] },
+        { name: 'Danh sách đơn (O07)', path: '/orders', check: Array.isArray },
+        { name: 'Lọc đơn pending', path: '/orders?group=pending', check: Array.isArray },
+        { name: 'Nhóm đơn sai → 400', path: '/orders?group=bad', expect: [400] },
+        { name: 'Đơn không tồn tại → 404', path: '/orders/' + ZERO, expect: [404] },
+        { name: 'Yêu cầu thuê (O06)', path: '/requests', check: Array.isArray },
+        { name: 'PATCH status lạ → 400', method: 'PATCH', path: '/orders/' + ZERO + '/status', body: { status: 'COMPLETED' }, expect: [400] },
+        { name: 'Từ chối thiếu lý do → 400', method: 'POST', path: '/requests/' + ZERO + '/reject', body: {}, expect: [400] },
+        { name: 'Doanh thu', path: '/revenue', check: (d) => typeof d.totalRevenue === 'number' },
+        { name: 'Thống kê 30 ngày (O16)', path: '/stats?range=d30', check: (d) => Array.isArray(d.bars) && Array.isArray(d.products) },
+        { name: 'Ngày 31/02 → 400', path: '/stats?range=custom&from=2026-02-31&to=2026-03-01', expect: [400] },
+    ]
+    $('#btn-smoke').onclick = async () => {
+        const tb = $('#smoke-tbl tbody'); tb.innerHTML = ''; $('#btn-smoke').disabled = true
+        let pass = 0
+        for (const t of SMOKE) {
+            const m = t.method || 'GET', exp = t.expect || [200]
+            let cell
+            try {
+                const r = await api(m, t.path, t.body, { noAuth: t.noAuth, soft: true })
+                const good = exp.includes(r.status) && (!t.check || r.status >= 400 || (() => { try { return !!t.check(r.data) } catch { return false } })())
+                if (good) pass++
+                cell = `<tr><td>${good ? '<b class="okc">✓</b>' : '<b class="err">✗</b>'}</td><td>${esc(t.name)}</td><td>${esc(m)} ${esc(t.path)}</td><td>${esc(exp.join('/'))}</td><td class="${good ? '' : 'err'}">${r.status}${!good && r.data && r.data.message ? ' — ' + esc(r.data.message) : ''}</td><td>${r.ms}</td></tr>`
+            } catch (e) { cell = `<tr><td><b class="err">✗</b></td><td>${esc(t.name)}</td><td>${esc(m)} ${esc(t.path)}</td><td>${esc(exp.join('/'))}</td><td class="err">${esc(e.message)}</td><td></td></tr>` }
+            tb.insertAdjacentHTML('beforeend', cell)
+        }
+        $('#smoke-sum').innerHTML = `<b class="${pass === SMOKE.length ? 'okc' : 'err'}">${pass}/${SMOKE.length} đạt</b>`
+        $('#btn-smoke').disabled = false
+    }
+
+    // ---------- dashboard ----------
+    $('#btn-dash').onclick = () => run('#out-dash', async () => {
+        const d = await api('GET', '/dashboard')
+        return `<p>Xin chào <b>${esc(d.greeting.name)}</b> · ${esc(d.greeting.date)}</p>
+  <div class="kpis">${kpi('Doanh thu ' + d.kpis.revenueMonthLabel, vnd(d.kpis.revenueMonth), d.kpis.revenueDeltaText)}${kpi('Đang xử lý', d.kpis.processingCount, d.kpis.processingNote)}${kpi('Chờ xác nhận', d.kpis.pendingCount, d.kpis.pendingNote)}${kpi('Đánh giá (mock)', d.kpis.rating, d.kpis.reviewCount + ' lượt')}</div>
+  ${d.urgent ? `<div class="box warn">⏰ Đơn ${esc(d.urgent.shortCode)} — ${esc(d.urgent.productLabel)} (${esc(d.urgent.renter)}): ${esc(secText(d.urgent.secondsLeft))}</div>` : ''}
+  <h3>Yêu cầu chờ xác nhận</h3>
+  <div class="tw"><table><tr><th>Mã</th><th>Sản phẩm</th><th>Người thuê</th><th>Ngày thuê</th><th>Hạn</th></tr>${d.pendingRequests.map((r) => `<tr><td>${esc(r.shortCode)}</td><td>${esc(r.productLabel)}</td><td>${esc(r.renter)}</td><td>${day(r.start)} → ${day(r.end)}</td><td class="${r.urgent ? 'err' : ''}">${esc(secText(r.secondsLeft))}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Không có</td></tr>'}</table></div>
+  <h3>Đơn đang xử lý</h3>
+  ${d.processingOrders.map((o) => `<div>${chip(o.status[0], o.status[1])} ${esc(o.sub)}</div>`).join('') || '<p class="muted">Không có</p>'}
+  <h3>Doanh thu 6 tháng (triệu đồng)</h3>${bars(d.revenue6m.map((x) => ({ label: x.m, value: Number(x.v), text: x.v })))}`
+    })
+
+    // ---------- sản phẩm ----------
+    let META = null
+    const fill = (id, list, blank) => { $(id).innerHTML = `<option value="">${esc(blank)}</option>` + list.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('') }
+    $('#btn-meta').onclick = () => run('#out-pform', async () => {
+        META = await api('GET', '/meta'); const f = META.productForm
+        fill('#p-cat', f.categories, '— chọn danh mục —'); fill('#p-brand', f.brands, '—'); fill('#p-series', f.series, '—')
+        return okBox(`Đã nạp ${f.categories.length} danh mục, ${f.brands.length} thương hiệu, ${f.series.length} series`) + (f.categories.length ? '' : '<div class="box warn">DB chưa có danh mục (Category) nào ở trạng thái ACTIVE — hãy seed trước khi tạo sản phẩm.</div>')
+    })
+    const loadProducts = () => run('#out-plist', async () => {
+        const rows = await api('GET', '/products?status=' + encodeURIComponent($('#p-filter').value))
+        return `<div class="tw"><table><tr><th></th><th>Sản phẩm</th><th>Giá / cọc</th><th>Lượt thuê</th><th>Trạng thái</th><th></th></tr>${rows.map((p) => `<tr>
+    <td>${p.image ? `<img class="th" src="${esc(p.image)}" alt="" onerror="this.style.visibility='hidden'">` : ''}</td>
+    <td><b>${esc(p.name)}</b><div class="muted">${esc(p.sku)} · ${esc(p.id)}</div>${p.note ? `<div class="err">Lý do từ chối: ${esc(p.note)}</div>` : ''}</td>
+    <td>${vnd(p.price)}<div class="muted">cọc ${vnd(p.deposit)}</div></td><td>${p.rentals}</td><td>${chip(p.statusLabel, p.statusKind)}</td>
+    <td><button class="sm ghost" data-act="edit" data-id="${esc(p.id)}">Sửa</button>
+      ${p.canHide ? `<button class="sm ghost" data-act="hide" data-id="${esc(p.id)}">Ẩn</button>` : ''}${p.canShow ? `<button class="sm ghost" data-act="show" data-id="${esc(p.id)}">Hiện</button>` : ''}
+      <button class="sm danger" data-act="del" data-id="${esc(p.id)}">Xóa</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Chưa có sản phẩm</td></tr>'}</table></div><p class="muted">${rows.length} sản phẩm</p>`
+    })
+    $('#btn-plist').onclick = loadProducts
+    const setForm = (p) => {
+        $('#p-id').value = p.id || ''; $('#p-editing').textContent = p.id ? '— đang sửa ' + p.id : ''
+        const set = (id, v) => { $(id).value = v ?? '' }
+        set('#p-name', p.name); set('#p-cat', p.categoryId); set('#p-brand', p.brandId); set('#p-series', p.seriesId); set('#p-char', p.characterName)
+        set('#p-type', p.productType || 'COSTUME'); set('#p-gender', p.gender || 'UNISEX'); set('#p-size', p.size); set('#p-diff', p.difficulty); set('#p-cond', p.conditionLevel)
+        set('#p-price', p.pricePerDay); set('#p-deposit', p.depositAmount); set('#p-value', p.itemValue); set('#p-qty', p.quantity ?? 1)
+        set('#p-min', p.minRentalDays ?? 1); set('#p-max', p.maxRentalDays ?? 7); set('#p-clean', p.cleaningDays ?? 1)
+        set('#p-desc', p.description); set('#p-care', p.careGuide)
+        $('#p-images').value = (p.images || []).join('\n')
+        $('#p-acc').value = (p.accessories || []).map((a) => `${a.type} | ${a.name} | ${a.isRequired ? 'yes' : 'no'}`).join('\n')
+    }
+    $('#out-plist').onclick = async (ev) => {
+        const b = ev.target.closest('button[data-act]'); if (!b) return
+        const { act, id } = b.dataset
+        if (act === 'edit') return run('#out-pform', async () => { setForm(await api('GET', '/products/' + id)); document.querySelector('#p-name').scrollIntoView({ behavior: 'smooth', block: 'center' }); return okBox('Đã nạp sản phẩm vào form bên dưới. Sửa rồi bấm “PUT – Cập nhật”.') })
+        if (act === 'del' && !confirm('Xóa sản phẩm này?')) return
+        await run('#out-pform', async () => {
+            await api(act === 'del' ? 'DELETE' : 'POST', act === 'del' ? '/products/' + id : `/products/${id}/${act}`)
+            return okBox({ hide: 'Đã ẩn', show: 'Đã hiện lại', del: 'Đã xóa' }[act])
+        })
+        loadProducts()
+    }
+    const lines = (id) => $(id).value.split('\n').map((s) => s.trim()).filter(Boolean)
+    function readForm() {
+        const g = (id) => $(id).value.trim(), n = (id) => (g(id) === '' ? undefined : Number(g(id)))
+        const b = {
+            name: g('#p-name'), characterName: g('#p-char'), description: g('#p-desc'), careGuide: g('#p-care'), size: g('#p-size'),
+            categoryId: g('#p-cat'), brandId: g('#p-brand'), seriesId: g('#p-series'), productType: g('#p-type'), gender: g('#p-gender'), difficulty: g('#p-diff'), conditionLevel: g('#p-cond'),
+            pricePerDay: n('#p-price'), depositAmount: n('#p-deposit'), itemValue: n('#p-value'), quantity: n('#p-qty'), minRentalDays: n('#p-min'), maxRentalDays: n('#p-max'), cleaningDays: n('#p-clean'),
+            images: lines('#p-images'),
+            accessories: lines('#p-acc').map((l) => { const [type, name, req] = l.split('|').map((s) => s.trim()); return { type: (type || '').toUpperCase(), name, isRequired: /^(yes|true|1|có|bắt buộc)$/i.test(req || '') } }),
+        }
+        for (const k of Object.keys(b)) if (b[k] === '' || b[k] === undefined) delete b[k]
+        return b
+    }
+    const submitProduct = (method) => run('#out-pform', async () => {
+        const id = $('#p-id').value
+        if (method === 'PUT' && !id) throw new Error('Chưa có ID: bấm “Sửa” ở một dòng trong danh sách trước.')
+        const r = await api(method, method === 'PUT' ? '/products/' + id : '/products', readForm())
+        loadProducts()
+        return okBox(`${method === 'PUT' ? 'Đã cập nhật' : 'Đã tạo'} “${r.name}” — trạng thái ${r.statusLabel} (${r.displayStatus})`) + `<pre>${esc(JSON.stringify(r, null, 2))}</pre>`
+    })
+    $('#btn-pcreate').onclick = () => submitProduct('POST')
+    $('#btn-pupdate').onclick = () => submitProduct('PUT')
+    $('#btn-pclear').onclick = () => { setForm({}); $('#out-pform').innerHTML = '' }
+    $('#btn-psample').onclick = () => {
+        const cat = $('#p-cat').options[1]
+        setForm({ name: 'Raiden Shogun (test ' + new Date().toLocaleTimeString('vi-VN') + ')', categoryId: cat ? cat.value : '', characterName: 'Raiden Shogun', gender: 'FEMALE', size: 'M', difficulty: 'MEDIUM', conditionLevel: 'LIKE_NEW',
+            pricePerDay: 150000, itemValue: 800000, depositAmount: 400000, quantity: 1, minRentalDays: 1, maxRentalDays: 7, cleaningDays: 1,
+            description: 'Bộ đồ test từ Vendor API Tester.', careGuide: 'Giặt tay, không sấy',
+            images: ['https://picsum.photos/seed/cos1/600/800', 'https://picsum.photos/seed/cos2/600/800'],
+            accessories: [{ type: 'WIG', name: 'Tóc tím', isRequired: false }, { type: 'OTHER', name: 'Túi đựng', isRequired: true }] })
+    }
+
+    // ---------- yêu cầu & đơn ----------
+    const reasons = () => (META ? META.rejectReasons : ['Bộ đồ đang giặt / bảo trì', 'Hết hàng hoặc đồ đang hư hỏng', 'Lý do khác'])
+    const loadRequests = () => run('#out-req', async () => {
+        if (!META) { try { META = await api('GET', '/meta') } catch { /* dùng lý do mặc định */ } }
+        const rows = await api('GET', '/requests')
+        return rows.map((r) => `<div class="card"><div class="row"><b>${esc(r.shortCode)}</b> ${esc(r.productLabel)} <span class="muted">· ${esc(r.renter)} · ${r.orderCount} đơn đã thuê</span> <span class="${r.urgent ? 'err' : 'muted'}">⏰ ${esc(secText(r.secondsLeft))}</span></div>
+    <div class="muted">${day(r.start)} → ${day(r.end)} (${r.days} ngày) · ${esc(r.ship)} · ${esc(r.route)}</div>
+    <div>Tiền thuê ${vnd(r.rentalTotal)} · cọc ${vnd(r.depositAmount)} · phí sàn ${r.feeRate}% · <b>bạn nhận ${vnd(r.payout)}</b></div><div class="muted">“${esc(r.note)}”</div>
+    <div class="row" style="margin:8px 0 0"><button class="sm" data-act="confirm" data-id="${esc(r.code)}">Xác nhận</button>
+      <select data-reason="${esc(r.code)}">${reasons().map((x) => `<option>${esc(x)}</option>`).join('')}</select><button class="sm danger" data-act="reject" data-id="${esc(r.code)}">Từ chối</button></div></div>`).join('') || '<p class="muted">Không có yêu cầu nào đang chờ.</p>'
+    })
+    $('#btn-req').onclick = loadRequests
+    $('#out-req').onclick = async (ev) => {
+        const b = ev.target.closest('button[data-act]'); if (!b) return
+        const { act, id } = b.dataset
+        let msg = ''
+        try {
+            if (act === 'confirm') await api('POST', `/requests/${id}/confirm`)
+            else await api('POST', `/requests/${id}/reject`, { reason: document.querySelector(`select[data-reason="${id}"]`).value })
+            msg = okBox(act === 'confirm' ? 'Đã xác nhận đơn ' : 'Đã từ chối đơn ') + ''
+        } catch (e) { msg = `<div class="box err"><b>HTTP ${e.status}</b> — ${esc(e.message)}</div>` }
+        await loadRequests(); $('#out-req').insertAdjacentHTML('afterbegin', msg)
+    }
+    $('#btn-olist').onclick = () => run('#out-olist', async () => {
+        const rows = await api('GET', '/orders?group=' + $('#o-group').value)
+        return `<div class="tw"><table><tr><th>Mã</th><th>Sản phẩm</th><th>Người thuê</th><th>Ngày thuê</th><th>Giao nhận</th><th>Bạn nhận</th><th>Trạng thái</th></tr>${rows.map((o) => `<tr class="click" data-code="${esc(o.code)}"><td>${esc(o.shortCode)}</td><td>${esc(o.product)}</td><td>${esc(o.renter)}</td><td>${day(o.start)} → ${day(o.end)}</td><td>${esc(o.ship)}</td><td>${vnd(o.payout)}</td><td>${chip(o.label, o.kind)}${o.secondsLeft !== undefined ? `<div class="muted">${esc(secText(o.secondsLeft))}</div>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">Không có đơn</td></tr>'}</table></div><p class="muted">${rows.length} đơn</p>`
+    })
+    $('#out-olist').onclick = (ev) => {
+        const tr = ev.target.closest('tr[data-code]'); if (!tr) return
+        run('#out-odetail', async () => {
+            const o = await api('GET', '/orders/' + tr.dataset.code)
+            return `<div class="card"><h3 style="margin-top:0">Chi tiết đơn ${esc(o.shortCode)} ${chip(o.label, o.kind)}</h3>
+    <div>Người thuê: <b>${esc(o.renter)}</b> · Nhận hàng: ${esc(o.ship)} · SĐT: ${esc(o.receiver.phone || '(ẩn tới khi xác nhận)')} · Địa chỉ: ${esc(o.receiver.address || '(ẩn tới khi xác nhận)')}</div>
+    <div class="muted">${day(o.start)} → ${day(o.end)} (${o.days} ngày)${o.cancelReason ? ' · Lý do hủy: ' + esc(o.cancelReason) : ''}</div>
+    <div class="tw"><table><tr><th>Món</th><th>Đơn giá</th><th>Cọc</th><th>SL</th><th>Ngày</th></tr>${o.items.map((i) => `<tr><td>${esc(i.name)}</td><td>${vnd(i.unitPrice)}</td><td>${vnd(i.deposit)}</td><td>${i.quantity}</td><td>${i.days}</td></tr>`).join('')}</table></div>
+    <div>Tiền thuê ${vnd(o.money.rentalTotal)} − phí sàn ${vnd(o.money.platformFee)} = <b>${vnd(o.money.payout)}</b> · cọc ${vnd(o.money.depositTotal)} · tổng khách trả ${vnd(o.money.totalAmount)}</div>
+    <div class="muted">Lịch sử: ${o.timeline.map((t) => esc(t.label) + ' (' + when(t.at) + ')').join(' → ') || 'chưa có'}</div></div>`
+        })
+    }
+
+    // ---------- doanh thu & thống kê ----------
+    $('#btn-rev').onclick = () => run('#out-rev', async () => {
+        const r = await api('GET', '/revenue')
+        return `<div class="kpis">${kpi('Tổng thực nhận', vnd(r.totalRevenue), r.completedOrders + ' đơn hoàn tất')}${kpi('Tiền thuê trước phí', vnd(r.grossRental), '')}${kpi('Phí sàn', vnd(r.platformFee), '')}${kpi('Đang chờ nhả', vnd(r.pendingPayout), r.pendingOrders + ' đơn đã xác nhận')}</div>`
+    })
+    $('#s-range').onchange = () => { const c = $('#s-range').value === 'custom'; $('#s-from').disabled = !c; $('#s-to').disabled = !c }
+    $('#btn-stats').onclick = () => run('#out-stats', async () => {
+        const range = $('#s-range').value
+        const q = range === 'custom' ? `?range=custom&from=${$('#s-from').value}&to=${$('#s-to').value}` : '?range=' + range
+        const s = await api('GET', '/stats' + q), k = s.kpis
+        return `<p class="muted">Khoảng: ${esc(s.label)}</p>
+  <div class="kpis">${kpi('Doanh thu', vnd(k.revenue), k.delta)}${kpi('Số đơn', k.orders, k.done + ' hoàn tất')}${kpi('Đánh giá (mock)', k.rating, k.reviews + ' lượt')}${kpi('Tranh chấp (mock)', k.dispute, k.disputeOf)}</div>
+  <h3>Biểu đồ cột — doanh thu theo ${s.bars.length > 14 || (s.bars[0] && s.bars[0].sub.startsWith('–')) ? 'tuần' : 'ngày'}</h3>${bars(s.bars.map((b) => ({ label: b.label, value: b.value, text: b.value ? Math.round(b.value / 1000) + 'k' : '' })))}
+  <h3>Biểu đồ tròn</h3><div class="pies">${pie('Doanh thu theo sản phẩm', s.products)}${pie('Đơn theo trạng thái', s.orderStatus)}</div>
+  <h3>Thuê nhiều nhất</h3><div class="tw"><table><tr><th>Sản phẩm</th><th>Lượt thuê</th><th>Doanh thu</th></tr>${s.top.map((t) => `<tr><td>${esc(t.name)}</td><td>${t.rentals}</td><td>${vnd(t.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Chưa có đơn hoàn tất</td></tr>'}</table></div>`
+    })
+
+    // ---------- gọi tự do ----------
+    $('#btn-send').onclick = () => run('#out-con', async () => {
+        const m = $('#c-method').value, raw = $('#c-body').value.trim()
+        let body; if (raw && m !== 'GET' && m !== 'DELETE') { try { body = JSON.parse(raw) } catch { throw new Error('Body không phải JSON hợp lệ') } }
+        const r = await api(m, $('#c-path').value.trim(), body, { noAuth: $('#c-noauth').checked, soft: true })
+        return `<div class="box ${r.ok ? 'ok' : 'err'}"><b>HTTP ${r.status}</b> · ${r.ms}ms</div><pre>${esc(typeof r.data === 'string' ? r.data : JSON.stringify(r.data, null, 2))}</pre>`
+    })
+    refreshWho()
+</script>
+</body>
+</html>

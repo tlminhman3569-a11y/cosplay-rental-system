@@ -3,16 +3,16 @@ import { ref, computed, onMounted } from 'vue'
 import BoLayout from '@/layouts/BoLayout.vue'
 import ChipTag from '@/components/ChipTag.vue'
 import OwnerCountdown from '@/components/owner/OwnerCountdown.vue'
-import LoadState from '@/components/LoadState.vue'
-import { useUiStore } from '@/stores/ui'
-import { ownerService } from '@/services/ownerService'
+import LoadState from '@/components/owner/LoadState.vue'
+import { useUiStore } from '@/store/ui'
+import { vendorService } from '@/services/vendorService'
 import { errMsg } from '@/services/http'
 import { dmy, vnd } from '@/utils/format'
 
 const ui = useUiStore()
 const DEFAULT_REASONS = ['Bộ đồ đang bận / không còn trống', 'Bộ đồ đang giặt hoặc bảo trì', 'Không giao được tới khu vực của khách', 'Lý do khác']
 const reasons = ref(DEFAULT_REASONS)
-// state: PENDING | CONFIRMED | REJECTED (cập nhật tại chỗ sau khi gọi API thành công để chủ đồ thấy kết quả)
+// state: PENDING | CONFIRMED | CANCELLED (cập nhật tại chỗ sau khi gọi API thành công để chủ đồ thấy kết quả)
 const list = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -20,7 +20,7 @@ const error = ref('')
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const [rows, meta] = await Promise.all([ownerService.requests(), ownerService.meta().catch(() => null)])
+    const [rows, meta] = await Promise.all([vendorService.requests(), vendorService.meta().catch(() => null)])
     list.value = rows.map((r) => ({ ...r, state: 'PENDING', reason: '', busy: false }))
     if (meta && meta.rejectReasons && meta.rejectReasons.length) reasons.value = meta.rejectReasons
   } catch (e) {
@@ -31,12 +31,12 @@ async function load() {
 onMounted(load)
 
 const pendingCount = computed(() => list.value.filter((r) => r.state === 'PENDING').length)
-const sub = computed(() => `${pendingCount.value} yêu cầu · khách đã thanh toán trước`)
+const sub = computed(() => `${pendingCount.value} yêu cầu chờ xác nhận`)
 
 async function confirm(r) {
   r.busy = true
   try {
-    await ownerService.confirmRequest(r.code)
+    await vendorService.confirmRequest(r.code)
     r.state = 'CONFIRMED'
     ui.toast(`Đã xác nhận ${r.code} – đơn chuyển sang Chuẩn bị đồ`)
   } catch (e) { ui.toast(errMsg(e, 'Không xác nhận được đơn')) } finally { r.busy = false }
@@ -45,9 +45,9 @@ async function reject(r) {
   if (!r.reason) { ui.toast('Vui lòng chọn lý do từ chối'); return }
   r.busy = true
   try {
-    await ownerService.rejectRequest(r.code, r.reason)
-    r.state = 'REJECTED'
-    ui.toast(`Đã từ chối ${r.code} – hoàn 100% cho khách`)
+    await vendorService.rejectRequest(r.code, r.reason)
+    r.state = 'CANCELLED'
+    ui.toast(`Đã từ chối ${r.code}. Khoản hoàn tiền (nếu có) chờ xử lý.`)
   } catch (e) { ui.toast(errMsg(e, 'Không từ chối được đơn')) } finally { r.busy = false }
 }
 </script>
@@ -57,7 +57,7 @@ async function reject(r) {
     <div class="col">
       <LoadState :loading="loading" :error="error" @retry="load" />
       <template v-if="!loading && !error">
-      <div class="card warn" style="padding:12px 16px">Từ chối hoặc quá hạn → hoàn 100% cho khách, ảnh hưởng điểm phản hồi của shop.</div>
+      <div class="card warn" style="padding:12px 16px">Xác nhận hoặc từ chối đơn đang chờ. Đơn quá hạn vẫn cần được xử lý; khoản hoàn tiền được ghi nhận chờ xử lý nếu khách đã thanh toán.</div>
       <div v-for="r in list" :key="r.code" class="card">
         <div class="row jb ac mb12">
           <div class="row g12 ac">
@@ -86,7 +86,7 @@ async function reject(r) {
           <div class="fl1">
             <div class="lbl">Lời nhắn từ người thuê</div>
             <div class="card tint" style="padding:12px">{{ r.note }}</div>
-            <div class="mt12"><ChipTag kind="g">Đã thanh toán – Clarity đang giữ {{ vnd(r.held) }}</ChipTag></div>
+            <div class="mt12"><ChipTag kind="g">Tổng giá trị đơn {{ vnd(r.held) }}</ChipTag></div>
             <div class="muted sm mt8">Gồm thuê {{ vnd(r.rentalTotal) }} + cọc {{ vnd(r.depositAmount) }} (bạn nhận {{ vnd(r.payout) }} sau phí {{ r.feeRate }}%)</div>
           </div>
         </div>
@@ -107,7 +107,7 @@ async function reject(r) {
           <RouterLink class="btn s" :to="{ name: 'ChuDonChiTiet', query: { code: r.code } }">Xem đơn thuê</RouterLink>
         </div>
         <div v-else class="row ac g12">
-          <span class="muted">Lý do: {{ r.reason }}. Đã hoàn 100% cho khách; các ngày thuê mở lại trên lịch.</span>
+          <span class="muted">Lý do: {{ r.reason }}. Đơn đã hủy; khoản hoàn tiền (nếu có) đang chờ xử lý.</span>
         </div>
       </div>
       <div v-if="!list.length" class="card muted">Không có yêu cầu nào.</div>
